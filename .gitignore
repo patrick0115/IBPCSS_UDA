@@ -1,3 +1,12 @@
+/calibration/raw_data/img
+/calibration/raw_data/pcd
+/calibration/raw_data/bag
+/calibration/raw_data/test_object_detection
+/calibration/raw_data
+/calibration/bag
+/calibration/script/cal_file/cam_cal/raw_img
+/calibration/script/cal_file/cam_cal/marked_img
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,0 +1,10 @@
+<launch>
+  <!-- 播放 rosbag -->
+  <node name="play_bag" pkg="rosbag" type="play" args="$(find calibration)/raw_data/bag/corridor_normal/bag_20230829_183058.bag"  output="screen"/>
+
+  <!-- 運行 Python 節點來過濾點雲資料 -->
+  <node name="filter_pointcloud" pkg="calibration" type="filter_pointcloud.py"  output="screen"/>
+
+  <!-- 使用 rosbag record 來記錄過濾後的資料 -->
+  <!-- <node name="record_bag" pkg="rosbag" type="record" args="-O $(find calibration)/raw_data/bag/corridor_normal/bag_20230829_183058_f.bag /filtered_assemble_yrl:=/assemble_yrl"  output="screen"  respawn="true"/> -->
+</launch>
