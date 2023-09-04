@@ -1,4 +1,6 @@
 <launch>
+    <arg name="rows" default="8" />
+    <arg name="cols" default="6" />
     <!-- 啟動USB相機 -->
     <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen">
         <param name="video_device" value="/dev/video0" />
@@ -11,7 +13,8 @@
 
     <!-- 啟動chessboard_detector節點 -->
     <node name="chessboard_detector" pkg="calibration" type="chessboard_detector.py" output="screen">
-        <param name="rows" value="7" />
-        <param name="cols" value="4" />
+        <param name="rows" value="$(arg rows)" />
+        <param name="cols" value="$(arg cols)" />
+        <param name="show" value="true" />
     </node>
 </launch>

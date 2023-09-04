@@ -1,15 +1,14 @@
 <launch>
 
     <param name="/use_sim_time" value="false" />
-    <arg name="topic1" default="/assemble_yrl" />
-    <arg name="topic2" default="/usb_cam/image_raw" />
- 
+    <!-- <arg name="topic1" default="/assemble_yrl" />
+    <arg name="topic2" default="/usb_cam/image_raw" /> -->
+    <arg name="rows" default="8" />
+    <arg name="cols" default="6" />
 
     <node pkg="yujin_yrl_v2_package" type="yrl_pub" name="yrl_pub" >
         <rosparam command="load" file="$(find yujin_yrl_v2_package)/config/params.yaml"/>
     </node> 
-
-
 
     <node type="point_cloud2_assembler" pkg="laser_assembler" name="my_assembler">
         <remap from="cloud" to="yrl_pub/yrl_cloud"/>
@@ -31,12 +30,13 @@
 
     <!-- 啟動chessboard_detector節點 -->
     <node name="chessboard_detector" pkg="calibration" type="chessboard_detector.py" output="screen">
-        <param name="rows" value="7" />
-        <param name="cols" value="4" />
+        <param name="rows" value="$(arg rows)" />
+        <param name="cols" value="$(arg cols)" />
+        <param name="show" value="false" />
     </node>
 
-    <!-- 啟動save_image_and_pcd節點 -->
-    <node name="capture_image_and_cloud" pkg="calibration" type="capture_image_and_cloud.py" output="screen"/>
+    <!-- 啟動save_image_and_pcd節點 -->l
+    <node name="capture_image_and_cloud" pkg="calibration" type="capture_image_and_cloud.py" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'" />
         <param name="img_save_path" value="$(find calibration)/raw_data/img" />
         <param name="pcd_save_path" value="$(find calibration)/raw_data/pcd/" />
  
