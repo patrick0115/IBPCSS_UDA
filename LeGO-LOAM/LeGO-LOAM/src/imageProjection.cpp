@@ -49,6 +49,8 @@ private:
     ros::Publisher pubSegmentedCloudPure;
     ros::Publisher pubSegmentedCloudInfo;
     ros::Publisher pubOutlierCloud;
+    // change
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr laserCloudInTest;
 
     pcl::PointCloud<PointType>::Ptr laserCloudIn;
     pcl::PointCloud<PointXYZIR>::Ptr laserCloudInRing;
@@ -85,7 +87,7 @@ private:
 public:
     ImageProjection():
         nh("~"){
-
+        //  pointCloudTopic = /assemble_yrl
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(pointCloudTopic, 1, &ImageProjection::cloudHandler, this);
 
         pubFullCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_projected", 1);
@@ -107,6 +109,8 @@ public:
     }
 
     void allocateMemory(){
+        // change
+        // laserCloudInTest.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
 
         laserCloudIn.reset(new pcl::PointCloud<PointType>());
         laserCloudInRing.reset(new pcl::PointCloud<PointXYZIR>());
@@ -162,11 +166,16 @@ public:
 
     void copyPointCloud(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
+        // 這個函數首先將 ROS 點雲消息的 header（包括時間戳和 frame_id）複製到一個 std_msgs::Header 結構中
         cloudHeader = laserCloudMsg->header;
         // cloudHeader.stamp = ros::Time::now(); // Ouster lidar users may need to uncomment this line
+        // 使用 pcl::fromROSMsg 函數將 ROS 的 sensor_msgs::PointCloud2 轉換為 PCL 的 pcl::PointCloud。
         pcl::fromROSMsg(*laserCloudMsg, *laserCloudIn);
+        // Change
+        // pcl::fromROSMsg(*laserCloudMsg, *laserCloudInTest);
         // Remove Nan points
         std::vector<int> indices;
+        // 移除 NaN 點: 使用 PCL 的 removeNaNFromPointCloud 函數來移除任何不是數字（NaN）的點
         pcl::removeNaNFromPointCloud(*laserCloudIn, *laserCloudIn, indices);
         // have "ring" channel in the cloud
         if (useCloudRing == true){
@@ -177,7 +186,10 @@ public:
             }  
         }
     }
-    
+        
+
+
+
     void cloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
         // 1. Convert ros message to pcl point cloud
@@ -201,6 +213,8 @@ public:
         segMsg.startOrientation = -atan2(laserCloudIn->points[0].y, laserCloudIn->points[0].x);
         segMsg.endOrientation   = -atan2(laserCloudIn->points[laserCloudIn->points.size() - 1].y,
                                                      laserCloudIn->points[laserCloudIn->points.size() - 1].x) + 2 * M_PI;
+
+
         if (segMsg.endOrientation - segMsg.startOrientation > 3 * M_PI) {
             segMsg.endOrientation -= 2 * M_PI;
         } else if (segMsg.endOrientation - segMsg.startOrientation < M_PI)
@@ -461,7 +475,7 @@ public:
 
     
     void publishCloud(){
-        // 1. Publish Seg Cloud Info
+        // 1. Publish Seg Cloud Info  Topic : /segmented_cloud_info
         segMsg.header = cloudHeader;
         pubSegmentedCloudInfo.publish(segMsg);
         // 2. Publish clouds

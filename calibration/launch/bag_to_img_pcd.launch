@@ -1,12 +1,16 @@
 <launch>
   <!-- 定義bag_file參數，並設置預設值 -->
-  <arg name="bag_file" default="$(find calibration)/raw_data/bag/corridor_normal/bag_20230829_185234.bag"/>
+  <arg name="bag_file" default="$(find calibration)/raw_data/bag/corridor_normal/bag_20231021_190610.bag"/>
 
   <!-- 播放bag檔案 -->
-  <node name="play_bag" pkg="rosbag" type="play" args="-l $(arg bag_file)"/>
+  <node name="play_bag" pkg="rosbag" type="play" args="-l $(arg bag_file)" output="screen"/>
 
   <!-- 執行Python腳本 -->
-  <node name="save_files" pkg="calibration" type="bag_to_img_pcd.py" output="screen"/>
+    <node name="capture_image_and_cloud" pkg="calibration" type="capture_image_and_cloud.py" output="screen" launch-prefix="bash -c 'sleep 5; $0 $@'" />
+        <param name="img_save_path" value="$(find calibration)/raw_data/img" />
+        <param name="pcd_save_path" value="$(find calibration)/raw_data/pcd/" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find calibration)/config/bag_to_img_pcd.rviz" required="true"/>
+
 </launch>
 
 

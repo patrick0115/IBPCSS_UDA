@@ -54,7 +54,7 @@ extern const string pointCloudTopic = "/assemble_yrl";
 extern const string imuTopic = "/vectornav/IMU";
 
 // Save pcd
-extern const string fileDirectory = "/home/icalab/loam_ws/src/LeGO-LOAM/LeGO-LOAM";
+extern const string fileDirectory = "/home/icalab/UDA_PCSS/src/IBPCSS_UDA/LeGO-LOAM/static_map/";
 
 // Using velodyne cloud "ring" channel for image projection (other lidar may have different name for this channel, change "PointXYZIR" below)
 extern const bool useCloudRing = false; // if true, ang_res_y and ang_bottom are not used
@@ -162,14 +162,14 @@ struct PointXYZIR
 {
     PCL_ADD_POINT4D
     PCL_ADD_INTENSITY;
-    uint16_t ring;
+    std::uint16_t ring;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 } EIGEN_ALIGN16;
 
 POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIR,  
                                    (float, x, x) (float, y, y)
                                    (float, z, z) (float, intensity, intensity)
-                                   (uint16_t, ring, ring)
+                                   (std::uint16_t, ring, ring)
 )
 
 /*
@@ -192,6 +192,24 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
                                    (float, roll, roll) (float, pitch, pitch) (float, yaw, yaw)
                                    (double, time, time)
 )
+
+
+struct PointXYZRGBI {
+    PCL_ADD_POINT4D;
+    PCL_ADD_RGB;
+    float intensity;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+} EIGEN_ALIGN16;
+
+POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZRGBI,
+                                   (float, x, x)
+                                   (float, y, y)
+                                   (float, z, z)
+                                   (float, rgb, rgb)
+                                   (float, intensity, intensity)
+)
+
+
 
 typedef PointXYZIRPYT  PointTypePose;
 

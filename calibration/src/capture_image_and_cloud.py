@@ -7,15 +7,14 @@ import pcl
 from sensor_msgs.msg import Image, PointCloud2
 from cv_bridge import CvBridge
 import sensor_msgs.point_cloud2 as pc2
+from std_srvs.srv import Trigger, TriggerResponse
 from datetime import datetime
 import os
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-image_filename = "img_" + timestamp + ".jpg"
-cloud_filename = "pcd_" + timestamp + ".pcd"
-
 
 current_image = None
 current_cloud = None
+img_save_path = None
+pcd_save_path = None
 
 def image_callback(msg):
     global current_image
@@ -36,7 +35,31 @@ def cloud_callback(msg):
     current_cloud = pcl.PointCloud()
     current_cloud.from_list(points_list)
 
+def handle_save_request(req):
+    global current_image, current_cloud, img_save_path, pcd_save_path
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    result = TriggerResponse()
+    
+    if current_image is not None:
+        if not os.path.exists(img_save_path):
+            os.makedirs(img_save_path)  # 創建目錄
+        image_filename = os.path.join(img_save_path, "img_" + timestamp + ".jpg")
+        cv2.imwrite(image_filename, current_image)
+        print("影像已保存為", image_filename)
+        
+    if current_cloud is not None:
+        if not os.path.exists(pcd_save_path):
+            os.makedirs(pcd_save_path)  # 創建目錄
+        cloud_filename = os.path.join(pcd_save_path, "pcd_" + timestamp + ".pcd")
+        pcl.save(current_cloud, cloud_filename)
+        print("點雲數據已保存為", cloud_filename)
+        
+    result.success = True
+    result.message = "Saved successfully"
+    return result
+
 def main():
+    global img_save_path, pcd_save_path
     rospy.init_node('save_image_and_pcd', anonymous=True)
 
     # 從參數伺服器獲取儲存路徑
@@ -51,23 +74,13 @@ def main():
     cloud_topic = "/assemble_yrl"
     rospy.Subscriber(cloud_topic, PointCloud2, cloud_callback)
 
-    print("按下Enter鍵保存當前的影像和點雲數據...")
-    while not rospy.is_shutdown():
-        input("按下Enter鍵保存...")
-        if current_image is not None:
-            if not os.path.exists(img_save_path):
-                os.makedirs(img_save_path) # 創建目錄
+    # 註冊服務
+    save_service = rospy.Service('save_data', Trigger, handle_save_request)
 
-            image_filename = os.path.join(img_save_path, "img_" + timestamp + ".jpg")
-            cv2.imwrite(image_filename, current_image)
-            print("影像已保存為", image_filename)
+    print("服務已啟動，等待保存請求...")
+    print("請在另一個視窗執行 rosservice call /save_data")
+  
+    rospy.spin()
 
-        if current_cloud is not None:
-            if not os.path.exists(pcd_save_path):
-                os.makedirs(pcd_save_path) # 創建目錄
-
-            cloud_filename = os.path.join(pcd_save_path, "pcd_" + timestamp + ".pcd")
-            pcl.save(current_cloud, cloud_filename)
-            print("點雲數據已保存為", cloud_filename)
 if __name__ == '__main__':
     main()

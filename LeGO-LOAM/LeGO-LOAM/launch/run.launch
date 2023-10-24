@@ -6,7 +6,7 @@
 
   <!-- 指定你想要播放的bag文件的路徑 -->
   <!-- <arg name="bag_file" default="/home/icalab/loam_ws/src/calibration/raw_data/bag/corridor_normal/2023-08-11-15-51-36.bag" /> -->
-  <arg name="bag_file" default="/home/icalab/loam_ws/src/calibration/raw_data/bag/corridor_normal/bag_20230829_185234_1.bag" />
+  <arg name="bag_file" default="$(find calibration)/raw_data/bag/corridor_normal/bag_20230919_192932.bag" />
 
   <!-- 指定要播放的特定主題1 -->
   <arg name="topic1" default="/assemble_yrl" />
