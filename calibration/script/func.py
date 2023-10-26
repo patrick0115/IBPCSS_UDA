@@ -16,68 +16,17 @@ def create_path_if_not_exists(path):
         os.makedirs(path)
         print(f"{path} path has been successfully created.")
 
-
-
-def save_array(array, filename):
-    # 使用numpy的save函式來儲存陣列
-    np.save(filename, array)
-    print(f'陣列已儲存到 {filename}')
-
 def load_array(filename):
     # 使用numpy的load函式來讀取陣列
     array = np.load(filename)
     print(f'已從 {filename} 讀取陣列')
     return array
 
-
-def get_objp( square_size, pattern_size):
-    objp = np.zeros((np.prod(pattern_size), 3), dtype=np.float32)
-    objp[:,:2] = np.mgrid[0:pattern_size[0],0:pattern_size[1]].T.reshape(-1,2)
-   # 將物件點與方格尺寸進行縮放
-    objp *= square_size
-
-    return objp
-
 def load_rvecs_tvecs(filepath):
     data = np.loadtxt(filepath)
     rvecs = data[:3].reshape(-1, 1)
     tvecs = data[3:].reshape(-1, 1)
     return rvecs, tvecs
-
-# def load_txt(filename):
-#     """
-#     Load camera matrix (mtx) and distortion coefficients (dist) from a txt file.
-
-#     Args:
-#         file_path (str): The path of the txt file.
-
-#     Returns:
-#         tuple: The camera matrix and distortion coefficients.
-#     """
-#     print('開始讀取檔案...')
-#     with open(filename, 'r') as f:
-#         lines = f.readlines()
-        
-#     # Get the index of lines that start a new block
-#     indices = [i for i, line in enumerate(lines) if line.startswith('Camera') or line.startswith('Distortion')]
-    
-#     # Load mtx
-#     mtx = []
-#     for line in lines[indices[0]+1:indices[1]-1]:
-#         mtx.append([float(val) for val in line.split()])
-#     mtx = np.array(mtx)
-    
-#     # Load dist
-#     dist = np.array([float(val) for val in lines[indices[1]+1].split()]).reshape(1,-1)
-    
-#     print('檔案讀取完成。')
-
-#     mtx = mtx.reshape(3, 3)
-    
-#     print("Camera Matrix (mtx): ", mtx)
-#     print("Distortion Coefficients (dist): ", dist)
-
-#     return mtx, dist
 
 
 def read_camera_params(file_path):
@@ -125,6 +74,58 @@ def read_camera_params(file_path):
 
     print("讀取完畢")
     return camera_matrix_np, distortion_np
+
+
+
+
+
+
+def get_objp( square_size, pattern_size):
+    objp = np.zeros((np.prod(pattern_size), 3), dtype=np.float32)
+    objp[:,:2] = np.mgrid[0:pattern_size[0],0:pattern_size[1]].T.reshape(-1,2)
+   # 將物件點與方格尺寸進行縮放
+    objp *= square_size
+
+    return objp
+
+
+
+# def load_txt(filename):
+#     """
+#     Load camera matrix (mtx) and distortion coefficients (dist) from a txt file.
+
+#     Args:
+#         file_path (str): The path of the txt file.
+
+#     Returns:
+#         tuple: The camera matrix and distortion coefficients.
+#     """
+#     print('開始讀取檔案...')
+#     with open(filename, 'r') as f:
+#         lines = f.readlines()
+        
+#     # Get the index of lines that start a new block
+#     indices = [i for i, line in enumerate(lines) if line.startswith('Camera') or line.startswith('Distortion')]
+    
+#     # Load mtx
+#     mtx = []
+#     for line in lines[indices[0]+1:indices[1]-1]:
+#         mtx.append([float(val) for val in line.split()])
+#     mtx = np.array(mtx)
+    
+#     # Load dist
+#     dist = np.array([float(val) for val in lines[indices[1]+1].split()]).reshape(1,-1)
+    
+#     print('檔案讀取完成。')
+
+#     mtx = mtx.reshape(3, 3)
+    
+#     print("Camera Matrix (mtx): ", mtx)
+#     print("Distortion Coefficients (dist): ", dist)
+
+#     return mtx, dist
+
+
 
 def camera_calibration(img_folder_path,marked_img_folder_path, square_size, pattern_size):
     print('開始進行相機校正...')
@@ -187,58 +188,9 @@ def write_txt(mtx, dist, filename):
     
 #     return ret
 
-def find_pose(img_path, mtx, dist, square_size, grid_size,objp ,show=False):
-    print('正在找尋旋轉向量和平移向量...')
-     # 讀取影像
-    flags = cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE
-    img = cv2.imread(img_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # 尋找棋盤格角點
-    ret, corners = cv2.findChessboardCorners(gray, (grid_size[0], grid_size[1]), flags=flags)
-
-    if ret == True:  
-        _, rvecs, tvecs = cv2.solvePnP(objp.reshape(-1,1,3), corners, mtx, dist)
-
-        # 如果show參數為True，則繪製並顯示角點
-        if show:
-            # 繪製角點
-            for i,corner in enumerate(corners):
-                # 將角點座標轉換為整數
-                x, y = tuple(map(int, corner[0]))
-                # 使用cv2.circle在每個角點位置畫一個小圓圈
-                if i ==0:
-                    cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-                elif i ==5:
-                    cv2.circle(img, (x, y), 5, (0, 255, 0), -1)
-                elif i ==8:
-                    cv2.circle(img, (x, y), 5, (0, 255, 255), -1)
-                else:
-                    cv2.circle(img, (x, y), 5, (255, 0, 0), -1)
-            img = cv2.resize(img, (640, 640))
-            cv2.imshow('Chessboard Corners', img)
-            cv2.waitKey(0)
-            print('角點圖像已保存為corners_image.png')
-  
-        print('找尋完成。')
-        return rvecs, tvecs
-    else:
-        print('找尋失敗，請確認棋盤格角點是否能被準確偵測。')
-        return None, None
-
-def vec_to_mat(rotation_vec, translation_vec):
-    # 使用cv2.Rodrigues將旋轉向量轉換為旋轉矩陣
-    rotation_mat, _ = cv2.Rodrigues(rotation_vec)
-    print(f'旋轉矩陣:\n{rotation_mat}')
 
 
-    # 建立4x4的轉換矩陣
-    transformation_mat = np.eye(4)
-    transformation_mat[:3, :3] = rotation_mat
-    transformation_mat[:3, 3] = translation_vec.flatten()
 
-    print(f'轉換矩陣:\n{transformation_mat}')
-    return transformation_mat ,rotation_mat , translation_vec
 
 
 # def read_edit_pt(file_path,voxel_size=None,color=[0, 0, 0],x_range = None,y_range = None,z_range = None):
@@ -262,14 +214,7 @@ def vec_to_mat(rotation_vec, translation_vec):
 #             o3d.geometry.AxisAlignedBoundingBox(min_bound=bound_min, max_bound=bound_max))
 
 #     return pcd
-def pcd_to_numpy(pcd_file):
-    # 讀取pcd檔
-    pcd = o3d.io.read_point_cloud(pcd_file)
 
-    # 轉換為 numpy 陣列
-    np_points = np.asarray(pcd.points)
-
-    return np_points
 def pcd_to_bin(pcd_file, bin_file):
     # 讀取pcd檔
     pcd = o3d.io.read_point_cloud(pcd_file)
