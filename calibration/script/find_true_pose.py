@@ -169,13 +169,13 @@ def parse_args():
 
 if __name__ == '__main__':
 
-    args = parse_args()
-    
+    # Show parameter
+    args = parse_args()    
     for key, value in vars(args).items():
         print(f"{key}: {value}")
 
+    # 測試圖片是否有校正板
     assert test_corner(args.img_path,args.square_column,args.square_row,args.show) ,"Unable to find corners. Please use another image."
-
 
     # 設定原始點雲 x、y、z三軸的範圍，範圍的格式為[min, max]
     x_range = [ 0.2, 1.5]
@@ -185,6 +185,7 @@ if __name__ == '__main__':
         x_range = [-100, 100]
         y_range = [-100, 100]
         z_range = [-100, 100]  
+
     # 設定原校正版位置
     origin=[0.658, -0.11,0.64]
     rotate_angle=[2, -2,-18]
@@ -211,7 +212,6 @@ if __name__ == '__main__':
     pcd_ls=[org_pcd,corner_points,line_points]
     show_pcd(pcd_ls)
 
-    
     if  args.save :
         save_path=os.path.join("./cal_file/lidar_cam_cal")
         create_path_if_not_exists(save_path)

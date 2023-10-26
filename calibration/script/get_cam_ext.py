@@ -1,6 +1,8 @@
 import os
 import open3d as o3d
 import argparse
+import cv2
+import numpy as np
 from func import *
 
 def vec_to_mat(rotation_vec, translation_vec):
@@ -65,25 +67,19 @@ def parse_args():
 
 if __name__ == '__main__':
     
+    # Show parameter
     args = parse_args()
-
     for key, value in vars(args).items():
         print(f"{key}: {value}")
 
+    # Load corner points mtx, dist
     save_path= os.path.join('./cal_file/lidar_cam_cal')
-
-    # Load corner points 
     corner_points_np = load_array(os.path.join(save_path,"3dcorner.npy"))
-
-
-    # Load mtx, dist
     mtx, dist = read_camera_params('./cal_file/cam_cal/ost.txt')
-
-
     print('Camera matrix (mtx) : \n', mtx)
     print('Distortion coefficient (dist) : \n', dist)
  
-    # Find rvecs, tvecs 
+    # Find rvecs, tvecs and calculate RT
     rvecs, tvecs = find_pose(args.img_path, mtx, dist, args.square_size, (args.square_column, args.square_row),corner_points_np,show=args.show)
     print('Rotation Vectors : \n', rvecs)
     print('Translation Vectors : \n', tvecs)

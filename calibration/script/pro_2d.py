@@ -59,17 +59,14 @@ def img_cal(img):
 
 def parse_args():
     parse = argparse.ArgumentParser()
-    # parse.add_argument('--pcd_path', type=str, default="../raw_data/pcd/pcd_20231023_173205.pcd")
-    # parse.add_argument('--img_path', type=str, default="../raw_data/img/img_20231023_173205.jpg")
-    # parse.add_argument('--pcd_path', type=str, default="../raw_data/1020/pcd/pcd_20231020_194528.pcd")
-    # parse.add_argument('--img_path', type=str, default="../raw_data/1020/img/img_20231020_194528.jpg")
     parse.add_argument('--pcd_path', type=str, default="../raw_data/pcd/pcd_20231023_171126.pcd")
     parse.add_argument('--img_path', type=str, default="../raw_data/img/img_20231023_171126.jpg")
     
     return parse.parse_args()
 
 if __name__ == '__main__':
-    
+
+    # Show parameter
     args = parse_args()
     for key, value in vars(args).items():
         print(f"{key}: {value}")
@@ -78,6 +75,7 @@ if __name__ == '__main__':
     img, pcd_np = load_image_and_point_cloud(args.img_path, args.pcd_path)
     height, width, _ = img.shape
     print("img height, width:",height, width)
+
     # Load mtx, dist , rvecs, tvecs
     mtx, dist = read_camera_params('./cal_file/cam_cal/ost.txt')
     rvecs, tvecs = load_rvecs_tvecs(os.path.join("cal_file", "lidar_cam_cal",'rvecs_tvecs.txt'))
@@ -94,19 +92,17 @@ if __name__ == '__main__':
     colors = np.zeros_like(pcd_np)  # 創建一個與點雲相同大小的0數組，用來儲存顏色
     colors[mask] = image_rgb[points_2d[mask, 1], points_2d[mask, 0]]  # 只對影像範圍內的點設定顏色
     
-    # 建立點雲並設置顏色
-    # 設定顯示範圍
+    
+    # Show pointcloud
     x_range = [ 0, 10]
     y_range = [-10, 10]
     z_range = [-5, 5]
     bound_min = [x_range[0], y_range[0], z_range[0]]
     bound_max = [x_range[1], y_range[1], z_range[1]]
-
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pcd_np)
     pcd.colors = o3d.utility.Vector3dVector(colors)
     pcd = pcd.crop(
         o3d.geometry.AxisAlignedBoundingBox(min_bound=bound_min, max_bound=bound_max))
-    # 顯示彩色點雲
     o3d.visualization.draw_geometries([pcd])
 
