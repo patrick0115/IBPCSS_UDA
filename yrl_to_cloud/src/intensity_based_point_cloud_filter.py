@@ -31,7 +31,7 @@ if __name__ == "__main__":
     
     # 設定訂閱者和發布者
     rospy.Subscriber(input_topic, PointCloud2, point_cloud_callback)
-    pub = rospy.Publisher(output_topic, PointCloud2, queue_size=10)
+    pub = rospy.Publisher(output_topic, PointCloud2, queue_size=1)
     
     print("節點正在運行，等待接收點雲資料...")
     rospy.spin()
