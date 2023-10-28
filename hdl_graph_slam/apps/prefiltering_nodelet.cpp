@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
+#include <cmath>  
+#include <vector> 
 
 #include <string>
 
@@ -133,10 +135,66 @@ private:
     }
 
     pcl::PointCloud<PointT>::ConstPtr filtered = distance_filter(src_cloud);
+    filtered = vehicle_filter(filtered); 
+    filtered = intensity_filter(filtered); 
     filtered = downsample(filtered);
-    filtered = outlier_removal(filtered);
+    // filtered = outlier_removal(filtered);
 
     points_pub.publish(*filtered);
+  }
+
+  pcl::PointCloud<PointT>::ConstPtr intensity_filter(const pcl::PointCloud<PointT>::ConstPtr& cloud) const {
+    pcl::PointCloud<PointT>::Ptr filtered(new pcl::PointCloud<PointT>()); 
+    filtered->reserve(cloud->size());
+
+    // 首先，計算intensity的平均值和標準差
+    double mean = 0.0;
+    double stddev = 0.0;
+
+    for(const auto& point : cloud->points) {
+      mean += point.intensity;
+    }
+    mean /= static_cast<double>(cloud->size());
+
+    for(const auto& point : cloud->points) {
+      stddev += std::pow(point.intensity - mean, 2);
+    }
+    stddev = std::sqrt(stddev / static_cast<double>(cloud->size()));
+
+    // 濾除intensity高於或低於一個標準差的點
+    std::copy_if(cloud->begin(), cloud->end(), std::back_inserter(filtered->points), [&](const PointT& p) {
+      return (p.intensity >= mean - stddev && p.intensity <= mean + stddev);
+    });
+
+    filtered->width = filtered->size();
+    filtered->height = 1;
+    filtered->is_dense = false;
+
+    filtered->header = cloud->header;
+
+    return filtered;
+  }
+
+
+  pcl::PointCloud<PointT>::ConstPtr vehicle_filter(const pcl::PointCloud<PointT>::ConstPtr& cloud) const {
+    pcl::PointCloud<PointT>::Ptr filtered(new pcl::PointCloud<PointT>());
+    filtered->reserve(cloud->size());
+
+    // 定義矩形範圍，這裡使用x, y座標作為示例
+    float x_min = -0.6, x_max = -0.05; 
+    float y_min = -0.4, y_max = 0.4; 
+
+    // 去除落在矩形內的點
+    std::copy_if(cloud->begin(), cloud->end(), std::back_inserter(filtered->points), [&](const PointT& p) {
+      return !(p.x > x_min && p.x < x_max && p.y > y_min && p.y < y_max);
+    });
+
+    filtered->width = filtered->size();
+    filtered->height = 1;
+    filtered->is_dense = false;
+    filtered->header = cloud->header;
+
+    return filtered;
   }
 
   pcl::PointCloud<PointT>::ConstPtr downsample(const pcl::PointCloud<PointT>::ConstPtr& cloud) const {

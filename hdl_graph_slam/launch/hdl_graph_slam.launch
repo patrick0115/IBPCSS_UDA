@@ -19,7 +19,7 @@
   <param name="/use_sim_time" value="true"/>
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_graph_slam)/rviz/test.rviz" required="true"/>
-  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock /home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231027_115104.bag" output="screen"/>
+  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock /home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231027_143628.bag" />
 
    <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/> 
 
@@ -29,19 +29,19 @@
     <param name="base_link_frame" value="$(arg base_link_frame_id)" />
     <param name="use_distance_filter" value="true" />
     <param name="distance_near_thresh" value="0" />
-    <param name="distance_far_thresh" value="20.0" />
-    <param name="downsample_method" value="NONE" />
-    <!-- <param name="downsample_resolution" value="0.1" /> -->
-    <param name="outlier_removal_method" value="RADIUS" />
+    <param name="distance_far_thresh" value="50.0" />
+    <param name="downsample_method" value="APPROX_VOXELGRID" />
+    <param name="downsample_resolution" value="0.02" />
+    <!-- <param name="outlier_removal_method" value="RADIUS" /> -->
     <!-- <param name="outlier_removal_method" value="STATISTICAL" /> -->
-    <!-- <param name="outlier_removal_method" value="NONE" /> -->
+    <param name="outlier_removal_method" value="NONE" />
     <param name="statistical_mean_k" value="20" />
     <param name="statistical_stddev" value="0.2" />
-    <param name="radius_radius" value="1" />
-    <param name="radius_min_neighbors" value="0.2" />
+    <param name="radius_radius" value="0.09" />
+    <param name="radius_min_neighbors" value="1" />
   </node>
 
-  <!-- <node pkg="nodelet" type="nodelet" name="scan_matching_odometry_nodelet" args="load hdl_graph_slam/ScanMatchingOdometryNodelet $(arg nodelet_manager)" >
+  <node pkg="nodelet" type="nodelet" name="scan_matching_odometry_nodelet" args="load hdl_graph_slam/ScanMatchingOdometryNodelet $(arg nodelet_manager)" >
     <param name="points_topic" value="$(arg points_topic)" />
     <param name="published_odom_topic" value="$(arg published_odom_topic)" />
     <param name="odom_frame_id" value="$(arg lidar_odom_frame_id)" />
@@ -53,13 +53,13 @@
     <param name="max_acceptable_trans" value="0.5" />
     <param name="max_acceptable_angle" value="0.5" />
     <param name="enable_robot_odometry_init_guess" value="$(arg enable_robot_odometry_init_guess)" />
-    <param name="downsample_method" value="NONE" /> -->
+    <param name="downsample_method" value="NONE" />
     <!-- <param name="downsample_resolution" value="0.1" /> -->
     <!-- <param name="registration_method" value="NDT_OMP" /> -->
     <!-- <param name="registration_method" value="ICP" /> -->
     <!-- <param name="registration_method" value="FAST_GICP" /> -->
     <!-- <param name="registration_method" value="FAST_VGICP" /> -->
-    <!-- <param name="registration_method" value="FAST_VGICP_CUDA" />
+    <param name="registration_method" value="FAST_VGICP_CUDA" />
     <param name="reg_num_threads" value="0" />
     <param name="reg_transformation_epsilon" value="0.01"/>
     <param name="reg_maximum_iterations" value="64"/>
@@ -69,7 +69,7 @@
     <param name="reg_correspondence_randomness" value="20"/>
     <param name="reg_resolution" value="1.0" />
     <param name="reg_nn_search_method" value="DIRECT7" />
-
++
     <param name="camera_fx" value="640.95" />
     <param name="camera_fy" value="634.34" />
     <param name="camera_cx" value="328.12" />
@@ -78,9 +78,9 @@
     <param name="tvecs" type="string" value="[-0.21660192, 0.21826830,0.31600145]" />
     <param name="mtx" type="string" value="[622.385878, 0.0, 348.999023, 0.0, 621.935066 , 246.603204, 0.0, 0.0, 1.0]" />
     <param name="dist" type="string" value="[0.014426 ,-0.000547, 0.004371 ,0.007068 ,0.000000]" />
-  </node> -->
+  </node>
   
-  <!-- <node pkg="nodelet" type="nodelet" name="floor_detection_nodelet" args="load hdl_graph_slam/FloorDetectionNodelet $(arg nodelet_manager)" if="$(arg enable_floor_detection)">
+  <node pkg="nodelet" type="nodelet" name="floor_detection_nodelet" args="load hdl_graph_slam/FloorDetectionNodelet $(arg nodelet_manager)" if="$(arg enable_floor_detection)">
     <param name="points_topic" value="$(arg points_topic)" />
     <param name="tilt_deg" value="0.0" />
     <param name="sensor_height" value="0.43" />
@@ -88,9 +88,9 @@
     <param name="floor_pts_thresh" value="256" />
     <param name="use_normal_filtering" value="false" />
     <param name="normal_filter_thresh" value="20.0" />
-  </node>  -->
+  </node> 
 
-  <!-- <node pkg="nodelet" type="nodelet" name="hdl_graph_slam_nodelet" args="load hdl_graph_slam/HdlGraphSlamNodelet $(arg nodelet_manager)">
+  <node pkg="nodelet" type="nodelet" name="hdl_graph_slam_nodelet" args="load hdl_graph_slam/HdlGraphSlamNodelet $(arg nodelet_manager)">
     <param name="points_topic" value="$(arg points_topic)" />
     <param name="published_odom_topic" value="$(arg published_odom_topic)" />
     <param name="map_frame_id" value="$(arg map_frame_id)" />
@@ -136,7 +136,7 @@
     <param name="graph_update_interval" value="3.0" />
     <param name="map_cloud_update_interval" value="10.0" />
     <param name="map_cloud_resolution" value="0.05" />
-  </node> -->
+  </node>
 
   <!-- <node pkg="hdl_graph_slam" type="map2odom_publisher.py" name="map2odom_publisher" >
      <param name="map_frame_id" value="$(arg map_frame_id)" />

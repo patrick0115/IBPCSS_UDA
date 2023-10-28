@@ -194,12 +194,8 @@ private:
         point3D.at<double>(2) = pt.z;
 
         cv::Mat pointCam = R * point3D + tvec;
-
         cv::Mat point2D = mtx * pointCam;
-
-        int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
-        int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));
-
+        std::cout << u  << std::endl;
         if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows) {
             cv::Vec3b color = image.at<cv::Vec3b>(v, u); 
             pt.r = color[2];  // BGR -> RGB

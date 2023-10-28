@@ -88,21 +88,31 @@ if __name__ == '__main__':
 
     # Project image on points
     points_2d = np.round(points_2d).astype(int)  # 取整數像素坐標
+
+
+    x_scale = 640 / 1920
+    y_scale = 480 / 1080
+    # scaled_positions = points_2d.copy()
+    # scaled_positions[:, 0] = scaled_positions[:, 0] * x_scale
+    # scaled_positions[:, 1] = scaled_positions[:, 1] * y_scale
+    
+    # points_2d=scaled_positions
+    # print(points_2d)
     mask = (0 <= points_2d[:, 0]) & (points_2d[:, 0] < width) & (0 <= points_2d[:, 1]) & (points_2d[:, 1] < height)
     colors = np.zeros_like(pcd_np)  # 創建一個與點雲相同大小的0數組，用來儲存顏色
     colors[mask] = image_rgb[points_2d[mask, 1], points_2d[mask, 0]]  # 只對影像範圍內的點設定顏色
     
     
-    # Show pointcloud
-    x_range = [ 0, 10]
-    y_range = [-10, 10]
-    z_range = [-5, 5]
-    bound_min = [x_range[0], y_range[0], z_range[0]]
-    bound_max = [x_range[1], y_range[1], z_range[1]]
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_np)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
-    pcd = pcd.crop(
-        o3d.geometry.AxisAlignedBoundingBox(min_bound=bound_min, max_bound=bound_max))
-    o3d.visualization.draw_geometries([pcd])
+    # # Show pointcloud
+    # x_range = [ 0, 10]
+    # y_range = [-10, 10]
+    # z_range = [-5, 5]
+    # bound_min = [x_range[0], y_range[0], z_range[0]]
+    # bound_max = [x_range[1], y_range[1], z_range[1]]
+    # pcd = o3d.geometry.PointCloud()
+    # pcd.points = o3d.utility.Vector3dVector(pcd_np)
+    # pcd.colors = o3d.utility.Vector3dVector(colors)
+    # pcd = pcd.crop(
+    #     o3d.geometry.AxisAlignedBoundingBox(min_bound=bound_min, max_bound=bound_max))
+    # o3d.visualization.draw_geometries([pcd])
 
