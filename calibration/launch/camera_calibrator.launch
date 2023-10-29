@@ -1,20 +1,21 @@
 <launch>
   <!-- 定義外部輸入的參數 -->
-  <arg name="size" default="7x4"/>
-  <arg name="square" default="0.0485"/>
+  <arg name="size" default="17x12"/>
+  <arg name="square" default="0.01"/>
   <arg name="image_topic" default="/usb_cam/image_raw"/>
   <arg name="camera_topic" default="/usb_cam"/>
   <arg name="destination_path" default="$(find calibration)/script/cal_file/cam_cal"/>
+  <arg name="image_width" default="960"/>
+  <arg name="image_height" default="540"/>
 
   <!-- 啟動USB攝像頭 -->
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node">
-    <param name="image_width" value="1920"/>
-    <param name="image_height" value="1080"/>
+    <param name="image_width" value="$(arg image_width)"/>
+    <param name="image_height" value="$(arg image_height)"/>
   </node>
 
   <!-- 執行camera_calibration -->
   <node name="camera_calibration" pkg="camera_calibration" type="cameracalibrator.py"
-        args="--size $(arg size) --square $(arg square) --no-service-check image:=$(arg image_topic) camera:=$(arg camera_topic)"
-        launch-prefix="bash -c ' $0 $@ ; mv  $(find calibration)/../../../../../../tmp/calibrationdata.tar.gz $(arg destination_path) &amp;&amp; tar -xzvf $(arg destination_path)/calibrationdata.tar.gz -C $(arg destination_path)' ">
+        args="--size $(arg size) --square $(arg square) --no-service-check image:=$(arg image_topic) camera:=$(arg camera_topic)">
   </node>
 </launch>
