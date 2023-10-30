@@ -19,7 +19,7 @@
   <param name="/use_sim_time" value="true"/>
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_graph_slam)/rviz/test.rviz" required="true"/>
-  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock /home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231027_143628.bag" />
+  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock /home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231029_170750.bag" />
 
    <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/> 
 
@@ -69,15 +69,11 @@
     <param name="reg_correspondence_randomness" value="20"/>
     <param name="reg_resolution" value="1.0" />
     <param name="reg_nn_search_method" value="DIRECT7" />
-+
-    <param name="camera_fx" value="640.95" />
-    <param name="camera_fy" value="634.34" />
-    <param name="camera_cx" value="328.12" />
-    <param name="camera_cy" value="261.78" />
-    <param name="rvecs" type="string" value="[1.14369190, -0.97722768, 1.24560884]" />
-    <param name="tvecs" type="string" value="[-0.21660192, 0.21826830,0.31600145]" />
-    <param name="mtx" type="string" value="[622.385878, 0.0, 348.999023, 0.0, 621.935066 , 246.603204, 0.0, 0.0, 1.0]" />
-    <param name="dist" type="string" value="[0.014426 ,-0.000547, 0.004371 ,0.007068 ,0.000000]" />
+
+    <!-- <param name="rvecs" type="string" value="[1.05609027, -1.20615636, 1.36252147]" />
+    <param name="tvecs" type="string" value="[0.04703533,0.64852852,0.18442012]" />
+    <param name="mtx" type="string" value="[575.416493, 0.0, 462.921798, 0.0, 570.435706, 272.781949, 0.0, 0.0, 1.0]" />
+    <param name="dist" type="string" value="[0.157403 ,-0.231388, -0.003486, 0.003449, 0.000000]" /> -->
   </node>
   
   <node pkg="nodelet" type="nodelet" name="floor_detection_nodelet" args="load hdl_graph_slam/FloorDetectionNodelet $(arg nodelet_manager)" if="$(arg enable_floor_detection)">

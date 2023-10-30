@@ -181,6 +181,7 @@ private:
   }
 
   cv::Mat projectPointCloudToImage(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_rgb, const cv::Mat& image) {
+    
     cv::Mat projected_image = image.clone();
     cv::Mat rvec = rvecs;
     cv::Mat tvec = tvecs;
@@ -194,8 +195,11 @@ private:
         point3D.at<double>(2) = pt.z;
 
         cv::Mat pointCam = R * point3D + tvec;
-        cv::Mat point2D = mtx * pointCam;
-        std::cout << u  << std::endl;
+        cv::Mat point2D = mtx * pointCam;    
+
+        int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
+        int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));  
+        
         if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows) {
             cv::Vec3b color = image.at<cv::Vec3b>(v, u); 
             pt.r = color[2];  // BGR -> RGB
@@ -761,10 +765,10 @@ private:
   ros::Publisher projected_image_pub;
   ros::Publisher colored_cloud_pub; 
   cv::Mat last_image;
-  cv::Mat rvecs = (cv::Mat_<double>(3, 1) << 1.04401593, -1.18279285, 1.35587951);
-  cv::Mat tvecs = (cv::Mat_<double>(3, 1) << 0.04353475, 0.63255090,0.15110410);
-  cv::Mat mtx = (cv::Mat_<double>(3, 3) << 1132.150600, 0.0, 920.101817, 0.0, 1122.933787 , 540.055602, 0.0, 0.0, 1.0);
-  cv::Mat dist = (cv::Mat_<double>(5, 1) << 0.014426 ,-0.000547, 0.004371 ,0.007068 ,0.000000);
+  cv::Mat rvecs = (cv::Mat_<double>(3, 1) << 1.05609027, -1.20615636, 1.36252147);
+  cv::Mat tvecs = (cv::Mat_<double>(3, 1) << 0.04703533,  0.64852852, 0.18442012);
+  cv::Mat mtx = (cv::Mat_<double>(3, 3) << 575.416493, 0.0, 462.921798, 0.0, 570.435706, 272.781949, 0.0, 0.0, 1.0);
+  cv::Mat dist = (cv::Mat_<double>(5, 1) << 0.157403 ,-0.231388, -0.003486, 0.003449, 0.000000);
 
   // ROS
   ros::NodeHandle nh;

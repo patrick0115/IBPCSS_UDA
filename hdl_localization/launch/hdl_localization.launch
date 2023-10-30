@@ -18,7 +18,7 @@
   <arg name="robot_odom_frame_id" value="odom" />
   <arg name="plot_estimation_errors" value="false" />
 
-  <arg name="bag_file" default="/home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231002_132923.bag"/>
+  <arg name="bag_file" default="/home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231029_145305.bag"/>
   <node name="rosbag_play" pkg="rosbag" type="play" args="--clock $(arg bag_file)" output="screen"/>
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d /home/icalab/UDA_PCSS/src/IBPCSS_UDA/hdl_localization/rviz/hdl_localization.rviz" required="true"/>
