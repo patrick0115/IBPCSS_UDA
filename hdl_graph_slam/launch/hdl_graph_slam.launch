@@ -17,14 +17,21 @@
   <arg name="robot_odom_frame_id" default="robot_odom" />
 
   <param name="/use_sim_time" value="true"/>
-  
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_graph_slam)/rviz/test.rviz" required="true"/>
-  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock /home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231029_170750.bag" />
 
-   <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/> 
+  <arg name="pcd_save_path" value="$(find hdl_localization)/data/" />
+  <arg name="bag_path" value="$(find calibration)/raw_data/bag/ee6/bag_20231120_203624.bag" />
+
+  <!-- <arg name="bag_path" value="$(find calibration)/raw_data/bag/icalab606/bag_20231116_191110.bag" /> -->
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_graph_slam)/rviz/test.rviz" required="true"/>
+  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock $(arg bag_path)"  output="screen"/>
+
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/> 
+  
+  <node name="image_segmentation_node" pkg="seg" type="image_segmentation_node.py"  />
 
   <!-- prefiltering_nodelet -->
-  <node pkg="nodelet" type="nodelet" name="prefiltering_nodelet" args="load hdl_graph_slam/PrefilteringNodelet $(arg nodelet_manager)" output="screen" >
+  <node pkg="nodelet" type="nodelet" name="prefiltering_nodelet" args="load hdl_graph_slam/PrefilteringNodelet $(arg nodelet_manager)" >
     <remap from="/velodyne_points" to="$(arg points_topic)" />
     <param name="base_link_frame" value="$(arg base_link_frame_id)" />
     <param name="use_distance_filter" value="true" />
@@ -32,8 +39,6 @@
     <param name="distance_far_thresh" value="50.0" />
     <param name="downsample_method" value="APPROX_VOXELGRID" />
     <param name="downsample_resolution" value="0.02" />
-    <!-- <param name="outlier_removal_method" value="RADIUS" /> -->
-    <!-- <param name="outlier_removal_method" value="STATISTICAL" /> -->
     <param name="outlier_removal_method" value="NONE" />
     <param name="statistical_mean_k" value="20" />
     <param name="statistical_stddev" value="0.2" />
@@ -46,19 +51,14 @@
     <param name="published_odom_topic" value="$(arg published_odom_topic)" />
     <param name="odom_frame_id" value="$(arg lidar_odom_frame_id)" />
     <param name="robot_odom_frame_id" value="$(arg robot_odom_frame_id)" />
-    <param name="keyframe_delta_trans" value="1.0" />
-    <param name="keyframe_delta_angle" value="1.0" />
-    <param name="keyframe_delta_time" value="10000.0" />
+    <param name="keyframe_delta_trans" value="0.1" />
+    <param name="keyframe_delta_angle" value="0.1" />
+    <param name="keyframe_delta_time" value="1.0" />
     <param name="transform_thresholding" value="true" />
     <param name="max_acceptable_trans" value="0.5" />
     <param name="max_acceptable_angle" value="0.5" />
     <param name="enable_robot_odometry_init_guess" value="$(arg enable_robot_odometry_init_guess)" />
     <param name="downsample_method" value="NONE" />
-    <!-- <param name="downsample_resolution" value="0.1" /> -->
-    <!-- <param name="registration_method" value="NDT_OMP" /> -->
-    <!-- <param name="registration_method" value="ICP" /> -->
-    <!-- <param name="registration_method" value="FAST_GICP" /> -->
-    <!-- <param name="registration_method" value="FAST_VGICP" /> -->
     <param name="registration_method" value="FAST_VGICP_CUDA" />
     <param name="reg_num_threads" value="0" />
     <param name="reg_transformation_epsilon" value="0.01"/>
@@ -69,11 +69,6 @@
     <param name="reg_correspondence_randomness" value="20"/>
     <param name="reg_resolution" value="1.0" />
     <param name="reg_nn_search_method" value="DIRECT7" />
-
-    <!-- <param name="rvecs" type="string" value="[1.05609027, -1.20615636, 1.36252147]" />
-    <param name="tvecs" type="string" value="[0.04703533,0.64852852,0.18442012]" />
-    <param name="mtx" type="string" value="[575.416493, 0.0, 462.921798, 0.0, 570.435706, 272.781949, 0.0, 0.0, 1.0]" />
-    <param name="dist" type="string" value="[0.157403 ,-0.231388, -0.003486, 0.003449, 0.000000]" /> -->
   </node>
   
   <node pkg="nodelet" type="nodelet" name="floor_detection_nodelet" args="load hdl_graph_slam/FloorDetectionNodelet $(arg nodelet_manager)" if="$(arg enable_floor_detection)">
@@ -87,6 +82,9 @@
   </node> 
 
   <node pkg="nodelet" type="nodelet" name="hdl_graph_slam_nodelet" args="load hdl_graph_slam/HdlGraphSlamNodelet $(arg nodelet_manager)">
+    <param name="default_resolution" value="0.05" />
+    <param name="default_pcd_save_path" value="$(arg pcd_save_path)" />
+    <param name="projection" value="false"/>
     <param name="points_topic" value="$(arg points_topic)" />
     <param name="published_odom_topic" value="$(arg published_odom_topic)" />
     <param name="map_frame_id" value="$(arg map_frame_id)" />
@@ -95,9 +93,9 @@
     <param name="g2o_solver_num_iterations" value="512" />
     <param name="enable_imu_acceleration" value="$(arg enable_imu_acc)" />
     <param name="enable_imu_orientation" value="$(arg enable_imu_ori)" />
-    <param name="max_keyframes_per_update" value="10" />
-    <param name="keyframe_delta_trans" value="0.1" />
-    <param name="keyframe_delta_angle" value="0.1" />
+    <param name="max_keyframes_per_update" value="2" />
+    <param name="keyframe_delta_trans" value="0.05" />
+    <param name="keyframe_delta_angle" value="0.05" />
     <param name="fix_first_node" value="true"/>
     <param name="fix_first_node_stddev" value="10 10 10 1 1 1"/>
     <param name="fix_first_node_adaptive" value="true"/>
@@ -129,8 +127,8 @@
     <param name="max_stddev_x" value="5.0" />
     <param name="min_stddev_q" value="0.05" />
     <param name="max_stddev_q" value="0.2" />
-    <param name="graph_update_interval" value="3.0" />
-    <param name="map_cloud_update_interval" value="10.0" />
+    <param name="graph_update_interval" value="2.0" />
+    <param name="map_cloud_update_interval" value="3.0" />
     <param name="map_cloud_resolution" value="0.05" />
   </node>
 

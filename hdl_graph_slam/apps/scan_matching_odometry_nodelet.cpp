@@ -26,6 +26,7 @@
 #include <hdl_graph_slam/registrations.hpp>
 #include <hdl_graph_slam/ScanMatchingStatus.h>
 
+#include <cv_bridge/cv_bridge.h>
 // #include <sensor_msgs/Image.h>
 // #include <opencv2/opencv.hpp>
 // #include <cv_bridge/cv_bridge.h>

@@ -19,6 +19,7 @@ endif()
 set(CMAKE_BUILD_TYPE "RELEASE")
 
 find_package(catkin REQUIRED COMPONENTS
+  cv_bridge
   nodelet
   tf2
   tf2_ros

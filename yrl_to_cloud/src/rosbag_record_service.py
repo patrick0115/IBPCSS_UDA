@@ -13,8 +13,13 @@ class RosbagRecorder:
         image_raw_topic = rospy.get_param('~image_raw', '/usb_cam/image_raw')
         tf_topic = rospy.get_param('~tf', '/tf')
         yrl_cloud_topic = rospy.get_param('~/yrl_cloud', '/yrl_pub/yrl_cloud')
-
-        self.topics = [assemble_yrl_topic, image_raw_topic, tf_topic,yrl_cloud_topic]
+        enable_seg_record = rospy.get_param('~enable_seg_record', 'true')
+        if enable_seg_record:
+            segmented_image_topic = rospy.get_param('~segmented_image', '/segmented_image')
+            self.topics = [assemble_yrl_topic, image_raw_topic, tf_topic,yrl_cloud_topic,segmented_image_topic]
+        else:
+            self.topics = [assemble_yrl_topic, image_raw_topic, tf_topic,yrl_cloud_topic]
+        
         print("要錄製的主題：", self.topics)
         
         self.service = rospy.Service('start_stop_record', Trigger, self.handle_record_request)
