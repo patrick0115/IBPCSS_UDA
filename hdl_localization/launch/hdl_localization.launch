@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
   <!-- arguments -->
-  <arg name="bag_file" value="$(find calibration)/raw_data/bag/ee6/bag_20231117_181550.bag" />
-  <arg name="globalmap_pcd" value="$(find hdl_localization)/data/ee6/ee6.pcd" />
+  <arg name="bag_file" value="$(find calibration)/raw_data/bag/walk/bag_20231120_203624.bag" />
+  <arg name="globalmap_pcd" value="$(find hdl_localization)/data/map_plane.pcd" />
   <param name="/use_sim_time" value="true"/>
   <arg name="nodelet_manager" default="velodyne_nodelet_manager" />
   <arg name="points_topic" default="/assemble_yrl" />
