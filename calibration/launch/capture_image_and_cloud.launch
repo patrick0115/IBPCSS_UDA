@@ -1,13 +1,12 @@
 <launch>
 
     <param name="/use_sim_time" value="false" />
-    <!-- <arg name="topic1" default="/assemble_yrl" /> -->
-    <!-- <arg name="topic2" default="/usb_cam/image_raw" /> -->
     <arg name="rows" default="7" />
     <arg name="cols" default="4" />
-    <arg name="image_width" default="1920" />
-    <arg name="image_height" default="1080" />
+    <arg name="image_width" default="960" />
+    <arg name="image_height" default="540" />
     <arg name="max_clouds" default="300" />
+
     <node pkg="yujin_yrl_v2_package" type="yrl_pub" name="yrl_pub" >
         <rosparam command="load" file="$(find yujin_yrl_v2_package)/config/params.yaml"/>
     </node> 
@@ -23,8 +22,8 @@
     <!-- 啟動USB相機 -->
     <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen">
         <param name="video_device" value="/dev/video0" />
-        <param name="image_width" value="1920" />
-        <param name="image_height" value="1080" />
+        <param name="image_width" value="$(arg image_width)" />
+        <param name="image_height" value="$(arg image_height)" />
         <param name="pixel_format" value="yuyv" />
         <param name="camera_frame_id" value="usb_cam" />
         <param name="io_method" value="mmap"/>

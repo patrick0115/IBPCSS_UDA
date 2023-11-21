@@ -1,11 +1,13 @@
 <launch>
     <arg name="rows" default="8" />
     <arg name="cols" default="6" />
+    <arg name="image_width" default="960"/>
+    <arg name="image_height" default="540"/>
     <!-- 啟動USB相機 -->
     <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen">
         <param name="video_device" value="/dev/video0" />
-        <param name="image_width" value="640" />
-        <param name="image_height" value="480" />
+        <param name="image_width" value="$(arg image_width)" />
+        <param name="image_height" value="$(arg image_height)" />
         <param name="pixel_format" value="yuyv" />
         <param name="camera_frame_id" value="usb_cam" />
         <param name="io_method" value="mmap"/>

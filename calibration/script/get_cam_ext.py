@@ -58,11 +58,12 @@ def find_pose(img_path, mtx, dist, square_size, grid_size,objp ,show=False):
     
 def parse_args():
     parse = argparse.ArgumentParser()
-    parse.add_argument('--img_path', type=str, default="../raw_data/img/img_20231023_171126.jpg")
+    parse.add_argument('--img_path', type=str, default="../raw_data/img/img_20231029_133301.jpg")
     parse.add_argument('--square_size', type=float, default=0.0485)
     parse.add_argument('--square_column', type=int, default=7)
     parse.add_argument('--square_row', type=int, default=4)
     parse.add_argument('--show','-sh', action="store_true")
+    parse.add_argument('--img_size',  type=str, default="960_540")
     return parse.parse_args()
 
 if __name__ == '__main__':
@@ -73,9 +74,9 @@ if __name__ == '__main__':
         print(f"{key}: {value}")
 
     # Load corner points mtx, dist
-    save_path= os.path.join('./cal_file/lidar_cam_cal')
+    save_path= os.path.join('./cal_file/lidar_cam_cal',args.img_size)
     corner_points_np = load_array(os.path.join(save_path,"3dcorner.npy"))
-    mtx, dist = read_camera_params('./cal_file/cam_cal/ost.txt')
+    mtx, dist = read_camera_params(os.path.join('./cal_file/cam_cal',args.img_size,'ost.txt'))
     print('Camera matrix (mtx) : \n', mtx)
     print('Distortion coefficient (dist) : \n', dist)
  

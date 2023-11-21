@@ -31,7 +31,8 @@
 #include <hdl_localization/ScanMatchingStatus.h>
 #include <hdl_global_localization/SetGlobalMap.h>
 #include <hdl_global_localization/QueryGlobalLocalization.h>
-
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/opencv.hpp>
 namespace hdl_localization {
 
 class HdlLocalizationNodelet : public nodelet::Nodelet {
@@ -52,21 +53,22 @@ public:
 
     robot_odom_frame_id = private_nh.param<std::string>("robot_odom_frame_id", "robot_odom");
     odom_child_frame_id = private_nh.param<std::string>("odom_child_frame_id", "base_link");
+    
 
-    use_imu = private_nh.param<bool>("use_imu", true);
-    invert_acc = private_nh.param<bool>("invert_acc", false);
-    invert_gyro = private_nh.param<bool>("invert_gyro", false);
-    if (use_imu) {
-      NODELET_INFO("enable imu-based prediction");
-      imu_sub = mt_nh.subscribe("/gpsimu_driver/imu_data", 256, &HdlLocalizationNodelet::imu_callback, this);
-    }
-    points_sub = mt_nh.subscribe("/velodyne_points", 5, &HdlLocalizationNodelet::points_callback, this);
+    image_sub = mt_nh.subscribe("/segmented_image", 1, &HdlLocalizationNodelet::image_callback, this);
+
+    points_sub = mt_nh.subscribe("/velodyne_points", 2, &HdlLocalizationNodelet::points_callback, this);
     globalmap_sub = nh.subscribe("/globalmap", 1, &HdlLocalizationNodelet::globalmap_callback, this);
     initialpose_sub = nh.subscribe("/initialpose", 8, &HdlLocalizationNodelet::initialpose_callback, this);
 
     pose_pub = nh.advertise<nav_msgs::Odometry>("/odom", 5, false);
     aligned_pub = nh.advertise<sensor_msgs::PointCloud2>("/aligned_points", 5, false);
     status_pub = nh.advertise<ScanMatchingStatus>("/status", 5, false);
+    globalmap_pub = nh.advertise<sensor_msgs::PointCloud2>("/transformed_globalmap", 1, true);
+    projected_image_pub = nh.advertise<sensor_msgs::Image>("/projected_image", 1);
+    colored_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/colored_cloud", 1);  // 初始化新的發布器  
+
+    map_pub_timer = private_nh.createTimer(ros::Duration(1.0), &HdlLocalizationNodelet::map_publish_callback, this);
 
     // global localization
     use_global_localization = private_nh.param<bool>("use_global_localization", true);
@@ -139,7 +141,6 @@ private:
     NODELET_ERROR_STREAM("unknown registration method:" << reg_method);
     return nullptr;
   }
-
   void initialize_params() {
     // intialize scan matching method
     double downsample_resolution = private_nh.param<double>("downsample_resolution", 0.1);
@@ -165,39 +166,125 @@ private:
       ));
     }
   }
-
 private:
-  /**
-   * @brief callback for imu data
-   * @param imu_msg
-   */
-  void imu_callback(const sensor_msgs::ImuConstPtr& imu_msg) {
-    std::lock_guard<std::mutex> lock(imu_data_mutex);
-    imu_data.push_back(imu_msg);
-  }
+  cv::Mat projectPointCloudToImage(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_rgb, const cv::Mat& image) {
+    cv::Mat projected_image = image.clone();
+    cv::Mat rvec = rvecs;
+    cv::Mat tvec = tvecs;
+    cv::Mat R;
+    cv::Rodrigues(rvec, R); 
 
-  /**
-   * @brief callback for point cloud data
-   * @param points_msg
-   */
+    for (auto& pt : *cloud_rgb) {
+        cv::Mat point3D(3, 1, CV_64F);
+        point3D.at<double>(0) = pt.x;
+        point3D.at<double>(1) = pt.y;
+        point3D.at<double>(2) = pt.z;
+
+        cv::Mat pointCam = R * point3D + tvec;
+        cv::Mat point2D = mtx * pointCam;    
+
+        int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
+        int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));  
+        
+        if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows) {
+            cv::Vec3b color = image.at<cv::Vec3b>(v, u); 
+            pt.r = color[2];  // BGR -> RGB
+            pt.g = color[1];
+            pt.b = color[0];
+            cv::circle(projected_image, cv::Point(u, v), 3, cv::Scalar(255, 0, 0), -1);  // 使用點雲中的 RGB 顏色
+        }
+      }
+      return projected_image;
+    }
+  void map_publish_callback(const ros::TimerEvent& event) {
+    if(!globalmap) {
+      NODELET_WARN("Global map has not been received yet!");
+      return;
+    }
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_rgb(new pcl::PointCloud<pcl::PointXYZRGB>());
+    cloud_rgb->header = globalmap->header;
+    for(const auto& point : *globalmap) {
+      pcl::PointXYZRGB color_point;
+      color_point.x = point.x;
+      color_point.y = point.y;
+      color_point.z = point.z;
+    // 設定固定的RGB顏色，例如紅色 (255, 0, 0)
+      uint8_t r = 0, g = 0, b = 0;    // 紅色
+      uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
+      color_point.rgb = *reinterpret_cast<float*>(&rgb);
+      cloud_rgb->points.push_back(color_point);
+    }
+
+    // 獲取 base_link 到 globalmap 的轉換
+    Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+    try {
+      geometry_msgs::TransformStamped transform_stamped = tf_buffer.lookupTransform(odom_child_frame_id, cloud_rgb->header.frame_id, ros::Time(0), ros::Duration(1.0));
+      transform = tf2::transformToEigen(transform_stamped).matrix().cast<float>();
+    } catch (tf2::TransformException &ex) {
+      ROS_WARN("%s", ex.what());
+      return;
+    }
+
+    // 應用轉換到每個點
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+    // pcl::transformPointCloud(*cloud_rgb, *transformed_cloud, transform);
+    pcl::transformPointCloud(*pcss_map, *transformed_cloud, transform);
+
+    // sensor_msgs::PointCloud2 map_msg;
+    // pcl::toROSMsg(*globalmap, map_msg);
+    // map_msg.header.frame_id = "map";
+    // map_msg.header.stamp = ros::Time::now();
+    // globalmap_pub.publish(map_msg);
+
+    if (!last_image.empty()) {
+      
+      cv::Mat projected_image = projectPointCloudToImage(transformed_cloud, last_image);
+      sensor_msgs::ImagePtr projected_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", projected_image).toImageMsg();
+      projected_image_pub.publish(projected_msg);
+
+      // 計算逆變換矩陣
+      Eigen::Matrix4f inverse_transform = transform.inverse();
+
+      // 應用逆變換到 transformed_cloud
+      pcl::PointCloud<pcl::PointXYZRGB>::Ptr original_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+      pcl::transformPointCloud(*transformed_cloud, *original_cloud, inverse_transform);
+
+    // 更新 pcss_map
+      *pcss_map = *original_cloud;
+
+      colored_cloud_pub.publish(pcss_map);
+    } 
+
+  }
+  void image_callback(const sensor_msgs::ImageConstPtr& image_msg) {
+    cv_bridge::CvImagePtr cv_ptr;
+    try {
+      cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
+      last_image = cv_ptr->image;
+    }
+    catch (cv_bridge::Exception& e) {
+      NODELET_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+  }
   void points_callback(const sensor_msgs::PointCloud2ConstPtr& points_msg) {
     if(!globalmap) {
       NODELET_ERROR("globalmap has not been received!!");
       return;
     }
-
+     
     const auto& stamp = points_msg->header.stamp;
     pcl::PointCloud<PointT>::Ptr pcl_cloud(new pcl::PointCloud<PointT>());
     pcl::fromROSMsg(*points_msg, *pcl_cloud);
-
     if(pcl_cloud->empty()) {
       NODELET_ERROR("cloud is empty!!");
       return;
     }
-
+    
     // transform pointcloud into odom_child_frame_id
     std::string tfError;
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
+
     if(this->tf_buffer.canTransform(odom_child_frame_id, pcl_cloud->header.frame_id, stamp, ros::Duration(0.1), &tfError))
     {
         if(!pcl_ros::transformPointCloud(odom_child_frame_id, *pcl_cloud, *cloud, this->tf_buffer)) {
@@ -223,25 +310,6 @@ private:
       return;
     }
     Eigen::Matrix4f before = pose_estimator->matrix();
-
-    // predict
-    if(!use_imu) {
-      pose_estimator->predict(stamp);
-    } else {
-      std::lock_guard<std::mutex> lock(imu_data_mutex);
-      auto imu_iter = imu_data.begin();
-      for(imu_iter; imu_iter != imu_data.end(); imu_iter++) {
-        if(stamp < (*imu_iter)->header.stamp) {
-          break;
-        }
-        const auto& acc = (*imu_iter)->linear_acceleration;
-        const auto& gyro = (*imu_iter)->angular_velocity;
-        double acc_sign = invert_acc ? -1.0 : 1.0;
-        double gyro_sign = invert_gyro ? -1.0 : 1.0;
-        pose_estimator->predict((*imu_iter)->header.stamp, acc_sign * Eigen::Vector3f(acc.x, acc.y, acc.z), gyro_sign * Eigen::Vector3f(gyro.x, gyro.y, gyro.z));
-      }
-      imu_data.erase(imu_data.begin(), imu_iter);
-    }
 
     // odometry-based prediction
     ros::Time last_correction_time = pose_estimator->last_correction_time();
@@ -275,12 +343,11 @@ private:
     }
 
     publish_odometry(points_msg->header.stamp, pose_estimator->matrix());
-  }
 
-  /**
-   * @brief callback for globalmap input
-   * @param points_msg
-   */
+
+
+    
+  }
   void globalmap_callback(const sensor_msgs::PointCloud2ConstPtr& points_msg) {
     NODELET_INFO("globalmap received!");
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
@@ -300,12 +367,18 @@ private:
         NODELET_INFO("done");
       }
     }
+    pcss_map.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
+    for(const auto& point : *globalmap) {
+      pcl::PointXYZRGB color_point;
+      color_point.x = point.x;
+      color_point.y = point.y;
+      color_point.z = point.z;
+      // 可以根據需要設置顏色
+      color_point.r = color_point.g = color_point.b = 255;
+      pcss_map->points.push_back(color_point);
+    }
+    pcss_map->header.frame_id = "map";
   }
-
-  /**
-   * @brief perform global localization to relocalize the sensor position
-   * @param
-   */
   bool relocalize(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res) {
     if(last_scan == nullptr) {
       NODELET_INFO_STREAM("no scan has been received");
@@ -350,11 +423,6 @@ private:
 
     return true;
   }
-
-  /**
-   * @brief callback for initial pose input ("2D Pose Estimate" on rviz)
-   * @param pose_msg
-   */
   void initialpose_callback(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose_msg) {
     NODELET_INFO("initial pose received!!");
     std::lock_guard<std::mutex> lock(pose_estimator_mutex);
@@ -368,12 +436,6 @@ private:
             private_nh.param<double>("cool_time_duration", 0.5))
     );
   }
-
-  /**
-   * @brief downsampling
-   * @param cloud   input cloud
-   * @return downsampled cloud
-   */
   pcl::PointCloud<PointT>::ConstPtr downsample(const pcl::PointCloud<PointT>::ConstPtr& cloud) const {
     if(!downsample_filter) {
       return cloud;
@@ -386,14 +448,8 @@ private:
 
     return filtered;
   }
-
-  /**
-   * @brief publish odometry
-   * @param stamp  timestamp
-   * @param pose   odometry pose to be published
-   */
   void publish_odometry(const ros::Time& stamp, const Eigen::Matrix4f& pose) {
-    // broadcast the transform over tf
+    // if tou have imu to get odom
     if(tf_buffer.canTransform(robot_odom_frame_id, odom_child_frame_id, ros::Time(0))) {
       geometry_msgs::TransformStamped map_wrt_frame = tf2::eigenToTransform(Eigen::Isometry3d(pose.inverse().cast<double>()));
       map_wrt_frame.header.stamp = stamp;
@@ -424,7 +480,6 @@ private:
       odom_trans.child_frame_id = odom_child_frame_id;
       tf_broadcaster.sendTransform(odom_trans);
     }
-
     // publish the transform
     nav_msgs::Odometry odom;
     odom.header.stamp = stamp;
@@ -438,10 +493,6 @@ private:
 
     pose_pub.publish(odom);
   }
-
-  /**
-   * @brief publish scan matching status information
-   */
   void publish_scan_matching_status(const std_msgs::Header& header, pcl::PointCloud<pcl::PointXYZI>::ConstPtr aligned) {
     ScanMatchingStatus status;
     status.header = header;
@@ -485,12 +536,6 @@ private:
       status.prediction_errors.push_back(tf2::eigenToTransform(Eigen::Isometry3d(pose_estimator->wo_prediction_error().get().cast<double>())).transform);
     }
 
-    if(pose_estimator->imu_prediction_error()) {
-      status.prediction_labels.push_back(std_msgs::String());
-      status.prediction_labels.back().data = use_imu ? "imu" : "motion_model";
-      status.prediction_errors.push_back(tf2::eigenToTransform(Eigen::Isometry3d(pose_estimator->imu_prediction_error().get().cast<double>())).transform);
-    }
-
     if(pose_estimator->odom_prediction_error()) {
       status.prediction_labels.push_back(std_msgs::String());
       status.prediction_labels.back().data = "odom";
@@ -502,38 +547,44 @@ private:
 
 private:
   // ROS
+  
   ros::NodeHandle nh;
   ros::NodeHandle mt_nh;
   ros::NodeHandle private_nh;
+  ros::Publisher projected_image_pub; 
+  ros::Subscriber image_sub; 
+  ros::Timer colorize_map_timer; 
+  ros::Timer map_pub_timer; 
 
   std::string robot_odom_frame_id;
   std::string odom_child_frame_id;
+  cv::Mat last_image;
+  cv::Mat rvecs = (cv::Mat_<double>(3, 1) << 1.05609027, -1.20615636, 1.36252147);
+  cv::Mat tvecs = (cv::Mat_<double>(3, 1) << 0.04703533,  0.64852852, 0.18442012);
+  cv::Mat mtx = (cv::Mat_<double>(3, 3) << 575.416493, 0.0, 462.921798, 0.0, 570.435706, 272.781949, 0.0, 0.0, 1.0);
+  cv::Mat dist = (cv::Mat_<double>(5, 1) << 0.157403 ,-0.231388, -0.003486, 0.003449, 0.000000);
 
-  bool use_imu;
+  // bool use_imu;
   bool invert_acc;
-  bool invert_gyro;
-  ros::Subscriber imu_sub;
+  // bool invert_gyro;
+  // ros::Subscriber imu_sub;
   ros::Subscriber points_sub;
   ros::Subscriber globalmap_sub;
   ros::Subscriber initialpose_sub;
-
+  ros::Publisher colored_cloud_pub; 
   ros::Publisher pose_pub;
   ros::Publisher aligned_pub;
   ros::Publisher status_pub;
-
+  ros::Publisher globalmap_pub;
   tf2_ros::Buffer tf_buffer;
   tf2_ros::TransformListener tf_listener;
   tf2_ros::TransformBroadcaster tf_broadcaster;
-
-  // imu input buffer
-  std::mutex imu_data_mutex;
-  std::vector<sensor_msgs::ImuConstPtr> imu_data;
 
   // globalmap and registration method
   pcl::PointCloud<PointT>::Ptr globalmap;
   pcl::Filter<PointT>::Ptr downsample_filter;
   pcl::Registration<PointT, PointT>::Ptr registration;
-
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcss_map;
   // pose estimator
   std::mutex pose_estimator_mutex;
   std::unique_ptr<hdl_localization::PoseEstimator> pose_estimator;
@@ -549,6 +600,4 @@ private:
   ros::ServiceClient query_global_localization_service;
 };
 }
-
-
 PLUGINLIB_EXPORT_CLASS(hdl_localization::HdlLocalizationNodelet, nodelet::Nodelet)

@@ -1,45 +1,41 @@
 <?xml version="1.0"?>
 <launch>
   <!-- arguments -->
+  <arg name="bag_file" value="$(find calibration)/raw_data/bag/ee6/bag_20231117_181550.bag" />
+  <arg name="globalmap_pcd" value="$(find hdl_localization)/data/ee6/ee6.pcd" />
   <param name="/use_sim_time" value="true"/>
   <arg name="nodelet_manager" default="velodyne_nodelet_manager" />
   <arg name="points_topic" default="/assemble_yrl" />
-  <!-- input clouds are transformed in odom_child_frame, and then localization is performed in that frame -->
-  <!-- this is useful to match the LIDAR and IMU coodinate systems -->
-  <arg name="odom_child_frame_id" default="yrl_cloud_id" />
-
-  <!-- optional arguments -->
-  <arg name="use_imu" default="false" />
-  <arg name="invert_imu_acc" default="false" />
-  <arg name="invert_imu_gyro" default="false" />
+  <arg name="img_topic" default="/usb_cam/image_raw" />
+  <arg name="raw_points_topic" default="/yrl_pub/yrl_cloud" />
+  <!-- <arg name="odom_child_frame_id" default="yrl_cloud_id" /> -->
+  <arg name="odom_child_frame_id" default="base_link" />
   <arg name="use_global_localization" default="true" />
-  <arg name="imu_topic" default="/imu/data" />
   <arg name="enable_robot_odometry_prediction" value="false" />
   <arg name="robot_odom_frame_id" value="odom" />
   <arg name="plot_estimation_errors" value="false" />
-
-  <arg name="bag_file" default="/home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/bag_20231002_132923.bag"/>
-  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock $(arg bag_file)" output="screen"/>
   
-  <node name="rviz" pkg="rviz" type="rviz" args="-d /home/icalab/UDA_PCSS/src/IBPCSS_UDA/hdl_localization/rviz/hdl_localization.rviz" required="true"/>
+  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock --topics  $(arg points_topic) $(arg img_topic) --bags $(arg bag_file)" />
+  
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_localization)/rviz/hdl_localization.rviz" required="true"/>
 
   <include file="$(find hdl_global_localization)/launch/hdl_global_localization.launch" if="$(arg use_global_localization)" />
+  
+  <node name="image_segmentation_node" pkg="seg" type="image_segmentation_node.py"  />
 
   <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager)" args="manager" output="screen"/>
 
     <node pkg="nodelet" type="nodelet" name="globalmap_server_nodelet" args="load hdl_localization/GlobalmapServerNodelet $(arg nodelet_manager)">
-      <param name="globalmap_pcd" value="$(find hdl_localization)/data/map.pcd" />
+      <param name="globalmap_pcd" value="$(arg globalmap_pcd)" />
       <param name="convert_utm_to_local" value="true" />
       <param name="downsample_resolution" value="0.1" />
     </node>
 
     <node pkg="nodelet" type="nodelet" name="hdl_localization_nodelet" args="load hdl_localization/HdlLocalizationNodelet $(arg nodelet_manager)">
       <remap from="/velodyne_points" to="$(arg points_topic)" />
-      <remap from="/gpsimu_driver/imu_data" to="$(arg imu_topic)" />
+      <remap from="/segmented_image" to="/segmented_image"/>
       <param name="odom_child_frame_id" value="$(arg odom_child_frame_id)" />
-      <param name="use_imu" value="$(arg use_imu)" />
-      <param name="invert_acc" value="$(arg invert_imu_acc)" />
-      <param name="invert_gyro" value="$(arg invert_imu_gyro)" />
       <param name="cool_time_duration" value="2.0" />
       <param name="enable_robot_odometry_prediction" value="$(arg enable_robot_odometry_prediction)" />
       <param name="robot_odom_frame_id" value="$(arg robot_odom_frame_id)" />

@@ -18,7 +18,7 @@ def show_pcd(pcd_ls):
     vis.add_geometry(coordinate_frame)
     # 獲取渲染選項並設置點的大小
     render_option = vis.get_render_option()
-    render_option.point_size = 1.0  # 設置點的大小
+    render_option.point_size = 2  # 設置點的大小
 
     # 顯示點雲
     vis.run()
@@ -155,8 +155,8 @@ def save_array(array, filename):
 
 def parse_args():
     parse = argparse.ArgumentParser()
-    parse.add_argument('--pcd_path', type=str, default="../raw_data/pcd/pcd_20231023_171126.pcd")
-    parse.add_argument('--img_path', type=str, default="../raw_data/img/img_20231023_171126.jpg")
+    parse.add_argument('--pcd_path', type=str, default="../raw_data/pcd/pcd_20231029_133301.pcd")
+    parse.add_argument('--img_path', type=str, default="../raw_data/img/img_20231029_133301.jpg")
     parse.add_argument('--square_size', type=float, default=0.0485)
     parse.add_argument('--square_column', type=int, default=7)
     parse.add_argument('--square_row', type=int, default=4)
@@ -165,6 +165,7 @@ def parse_args():
     parse.add_argument('--save','-s', action="store_true")
     parse.add_argument('--show','-sh', action="store_true")
     parse.add_argument('--allpt','-a', action="store_true")
+    parse.add_argument('--img_size',  type=str, default="960_540")
     return parse.parse_args()
 
 if __name__ == '__main__':
@@ -179,16 +180,16 @@ if __name__ == '__main__':
 
     # 設定原始點雲 x、y、z三軸的範圍，範圍的格式為[min, max]
     x_range = [ 0.2, 1.5]
-    y_range = [-0.5, 0.5]
-    z_range = [0.2, 1.5]
+    y_range = [-1, 0.5]
+    z_range = [0.2, 2.5]
     if args.allpt:
         x_range = [-100, 100]
         y_range = [-100, 100]
         z_range = [-100, 100]  
 
     # 設定原校正版位置
-    origin=[0.658, -0.11,0.64]
-    rotate_angle=[2, -2,-18]
+    origin=[0.612, -0.41,0.66]
+    rotate_angle=[2, 3,-15]
     
     # 創建校正板點雲numpy
     corner_points_np = create_corner(rows=args.square_column, columns=args.square_row, spacing=args.square_size)
@@ -213,7 +214,7 @@ if __name__ == '__main__':
     show_pcd(pcd_ls)
 
     if  args.save :
-        save_path=os.path.join("./cal_file/lidar_cam_cal")
+        save_path=os.path.join("./cal_file/lidar_cam_cal",args.img_size)
         create_path_if_not_exists(save_path)
         
         with open(os.path.join(save_path,"org_rot.txt") , "w") as file:

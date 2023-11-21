@@ -1,0 +1,17 @@
+<launch>
+  <!-- usb_cam node -->
+  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node">
+    <param name="video_device" value="/dev/video0" />
+    <param name="image_width" value="960" />
+    <param name="image_height" value="540" />
+  </node>
+  
+  <!-- image_view node for displaying the video stream -->
+  <node name="image_view" pkg="image_view" type="image_view" ns="image_view">
+    <remap from="image" to="/segmented_image"/>
+  </node>
+
+  <!-- image_segmentation_node -->
+  <node name="image_segmentation_node" pkg="seg" type="image_segmentation_node.py" output="screen" />
+
+</launch>

@@ -57,21 +57,28 @@
 
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
-
 namespace hdl_graph_slam {
 
 class HdlGraphSlamNodelet : public nodelet::Nodelet {
 public:
   typedef pcl::PointXYZI PointT;
-  typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, sensor_msgs::PointCloud2> ApproxSyncPolicy;
+  // typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, sensor_msgs::PointCloud2> ApproxSyncPolicy;
+  typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, sensor_msgs::PointCloud2, sensor_msgs::Image> MySyncPolicy;
 
   HdlGraphSlamNodelet() {}
   virtual ~HdlGraphSlamNodelet() {}
 
   virtual void onInit() {
+    
     nh = getNodeHandle();
     mt_nh = getMTNodeHandle();
     private_nh = getPrivateNodeHandle();
+
+    // 獲取當前時間並將其轉換為字符串
+    char buffer[80];
+    std::time_t now = std::time(nullptr);
+    std::strftime(buffer, sizeof(buffer), "%Y%m%d-%H%M%S", std::localtime(&now));
+    service_start_time = buffer;
 
     published_odom_topic = private_nh.param<std::string>("published_odom_topic", "/odom");
     map_frame_id = private_nh.param<std::string>("map_frame_id", "map");
@@ -79,7 +86,10 @@ public:
     map_cloud_resolution = private_nh.param<double>("map_cloud_resolution", 0.05);
     trans_odom2map.setIdentity();
 
+    default_pcd_save_path = private_nh.param<std::string>("default_pcd_save_path", "/home/icalab/UDA_PCSS/src/IBPCSS_UDA/calibration/raw_data/bag/corridor_normal/");
+
     max_keyframes_per_update = private_nh.param<int>("max_keyframes_per_update", 10);
+
     anchor_node = nullptr;
     anchor_edge = nullptr;
     floor_plane_node = nullptr;
@@ -88,22 +98,23 @@ public:
     loop_detector.reset(new LoopDetector(private_nh));
     map_cloud_generator.reset(new MapCloudGenerator());
     inf_calclator.reset(new InformationMatrixCalculator(private_nh));
-
     floor_edge_stddev = private_nh.param<double>("floor_edge_stddev", 10.0);
-
     points_topic = private_nh.param<std::string>("points_topic", "/velodyne_points");
+    default_save_map_resolution = private_nh.param<double>("default_save_map_resolution", 0.05);  // 0.05 為預設值
+
+    private_nh.param("projection", projection, false);
 
     odom_sub.reset(new message_filters::Subscriber<nav_msgs::Odometry>(mt_nh, published_odom_topic, 256));
     cloud_sub.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(mt_nh, "/filtered_points", 32));
-    sync.reset(new message_filters::Synchronizer<ApproxSyncPolicy>(ApproxSyncPolicy(32), *odom_sub, *cloud_sub));
-    sync->registerCallback(boost::bind(&HdlGraphSlamNodelet::cloud_callback, this, _1, _2));
+    image_sub.reset(new message_filters::Subscriber<sensor_msgs::Image>(nh, "/segmented_image", 256));
+    sync.reset(new message_filters::Synchronizer<MySyncPolicy>(MySyncPolicy(128), *odom_sub, *cloud_sub, *image_sub));
+    sync->registerCallback(boost::bind(&HdlGraphSlamNodelet::cloud_callback, this, _1, _2, _3));
     floor_sub = nh.subscribe("/floor_detection/floor_coeffs", 1024, &HdlGraphSlamNodelet::floor_coeffs_callback, this);
-
+    
     markers_pub = mt_nh.advertise<visualization_msgs::MarkerArray>("/hdl_graph_slam/markers", 16);
     odom2map_pub = mt_nh.advertise<geometry_msgs::TransformStamped>("/hdl_graph_slam/odom2pub", 16);
     map_points_pub = mt_nh.advertise<sensor_msgs::PointCloud2>("/hdl_graph_slam/map_points", 1, true);
     read_until_pub = mt_nh.advertise<std_msgs::Header>("/hdl_graph_slam/read_until", 32);
-    // map_pub=mt_nh.advertise<sensor_msgs::PointCloud2>("/map_points", 1, true);
 
     load_service_server = mt_nh.advertiseService("/hdl_graph_slam/load", &HdlGraphSlamNodelet::load_service, this);
     dump_service_server = mt_nh.advertiseService("/hdl_graph_slam/dump", &HdlGraphSlamNodelet::dump_service, this);
@@ -111,20 +122,24 @@ public:
 
     graph_updated = false;
     double graph_update_interval = private_nh.param<double>("graph_update_interval", 1.0);
-    double map_cloud_update_interval = private_nh.param<double>("map_cloud_update_interval", 5.0);
+    double map_cloud_update_interval = private_nh.param<double>("map_cloud_update_interval", 2.0);
     optimization_timer = mt_nh.createWallTimer(ros::WallDuration(graph_update_interval), &HdlGraphSlamNodelet::optimization_timer_callback, this);
     map_publish_timer = mt_nh.createWallTimer(ros::WallDuration(map_cloud_update_interval), &HdlGraphSlamNodelet::map_points_publish_timer_callback, this);
-    image_sub = nh.subscribe<sensor_msgs::Image>("/usb_cam/image_raw", 1, &HdlGraphSlamNodelet::imageCallback, this);
+    std::cout << "Enter [ rosservice call /hdl_graph_slam/save_map {} ] to save the map." << std::endl;      
+
+  
     projected_image_pub = nh.advertise<sensor_msgs::Image>("/projected_image", 1);
     colored_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/colored_cloud", 1);  // 初始化新的發布器  
   }
 
 private:
-  void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
-    last_image = cv_bridge::toCvCopy(msg, "bgr8")->image; 
-  }
 
-  void cloud_callback(const nav_msgs::OdometryConstPtr& odom_msg, const sensor_msgs::PointCloud2::ConstPtr& cloud_msg) {
+  void cloud_callback(const nav_msgs::OdometryConstPtr& odom_msg,const sensor_msgs::PointCloud2::ConstPtr& cloud_msg,const sensor_msgs::ImageConstPtr& image_msg){
+    
+    // init image
+    last_image = cv_bridge::toCvCopy(image_msg, "bgr8")->image; 
+
+    // init PointCloud
     const ros::Time& stamp = cloud_msg->header.stamp;
     Eigen::Isometry3d odom = odom2isometry(odom_msg);
     pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
@@ -132,25 +147,33 @@ private:
     if(base_frame_id.empty()) {
       base_frame_id = cloud_msg->header.frame_id;
     }
+
+    // init RGB PointCloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_rgb(new pcl::PointCloud<pcl::PointXYZRGB>());
-
     for (const auto& point : cloud->points) {
-        pcl::PointXYZRGB point_rgb;
-        point_rgb.x = point.x;
-        point_rgb.y = point.y;
-        point_rgb.z = point.z;
+      pcl::PointXYZRGB point_rgb;
+      point_rgb.x = point.x;
+      point_rgb.y = point.y;
+      point_rgb.z = point.z;
 
-        point_rgb.r = 0;
-        point_rgb.g = 255;
-        point_rgb.b = 0;
+      point_rgb.r = 255;
+      point_rgb.g = 255;
+      point_rgb.b = 255;
 
-        cloud_rgb->points.push_back(point_rgb);
+      cloud_rgb->points.push_back(point_rgb);
     }
     cloud_rgb->header = cloud->header;
     cloud_rgb->width = cloud->width;
     cloud_rgb->height = cloud->height;
     cloud_rgb->is_dense = cloud->is_dense;
 
+
+    if (!last_image.empty() && projection) {
+      cv::Mat projected_image = projectPointCloudToImage(cloud_rgb, last_image);
+      sensor_msgs::ImagePtr projected_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", projected_image).toImageMsg();
+      // projected_image_pub.publish(projected_msg);
+      colored_cloud_pub.publish(cloud_rgb);
+    } 
 
     if(!keyframe_updater->update(odom)) {
       std::lock_guard<std::mutex> lock(keyframe_queue_mutex);
@@ -165,22 +188,15 @@ private:
       return;
     }
 
-    if (!last_image.empty()) {
-      cv::Mat projected_image = projectPointCloudToImage(cloud_rgb, last_image);
-      sensor_msgs::ImagePtr projected_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", projected_image).toImageMsg();
-      projected_image_pub.publish(projected_msg);
-      colored_cloud_pub.publish(cloud_rgb);
-    } 
-
     double accum_d = keyframe_updater->get_accum_distance();
     KeyFrame::Ptr keyframe(new KeyFrame(stamp, odom, accum_d, cloud,cloud_rgb));
       
-
     std::lock_guard<std::mutex> lock(keyframe_queue_mutex);
     keyframe_queue.push_back(keyframe);
   }
 
   cv::Mat projectPointCloudToImage(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_rgb, const cv::Mat& image) {
+
     cv::Mat projected_image = image.clone();
     cv::Mat rvec = rvecs;
     cv::Mat tvec = tvecs;
@@ -194,8 +210,11 @@ private:
         point3D.at<double>(2) = pt.z;
 
         cv::Mat pointCam = R * point3D + tvec;
-        cv::Mat point2D = mtx * pointCam;
-        std::cout << u  << std::endl;
+        cv::Mat point2D = mtx * pointCam;    
+
+        int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
+        int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));  
+        
         if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows) {
             cv::Vec3b color = image.at<cv::Vec3b>(v, u); 
             pt.r = color[2];  // BGR -> RGB
@@ -203,11 +222,9 @@ private:
             pt.b = color[0];
             cv::circle(projected_image, cv::Point(u, v), 3, cv::Scalar(255, 0, 0), -1);  // 使用點雲中的 RGB 顏色
         }
+      }
+      return projected_image;
     }
-
-
-    return projected_image;
-}
 
   bool flush_keyframe_queue() {
     std::lock_guard<std::mutex> lock(keyframe_queue_mutex);
@@ -739,32 +756,38 @@ private:
     keyframes_snapshot_mutex.lock();
     snapshot = keyframes_snapshot;
     keyframes_snapshot_mutex.unlock();
+    double resolution = req.resolution == 0 ? default_save_map_resolution : req.resolution;
+    auto cloud = map_cloud_generator->generateColoredPointCloud(snapshot, resolution);
 
-    auto cloud = map_cloud_generator->generateColoredPointCloud(snapshot, req.resolution);
+    // auto cloud = map_cloud_generator->generateColoredPointCloud(snapshot, req.resolution);
 
     if(!cloud) {
       res.success = false;
       return true;
     }
 
+
     cloud->header.frame_id = map_frame_id;
     cloud->header.stamp = snapshot.back()->cloud->header.stamp;
-
-    int ret = pcl::io::savePCDFileBinary(req.destination, *cloud);
+    std::string filename = service_start_time + ".pcd";
+    std::string save_path = req.destination.empty() ? (default_pcd_save_path + filename) : req.destination;
+    int ret = pcl::io::savePCDFileBinary(save_path, *cloud);
+    // int ret = pcl::io::savePCDFileBinary(req.destination, *cloud);
     res.success = ret == 0;
 
     return true;
   }
 
 private:
-  ros::Subscriber image_sub;
+  bool projection;
+  std::string service_start_time;
   ros::Publisher projected_image_pub;
   ros::Publisher colored_cloud_pub; 
   cv::Mat last_image;
-  cv::Mat rvecs = (cv::Mat_<double>(3, 1) << 1.04401593, -1.18279285, 1.35587951);
-  cv::Mat tvecs = (cv::Mat_<double>(3, 1) << 0.04353475, 0.63255090,0.15110410);
-  cv::Mat mtx = (cv::Mat_<double>(3, 3) << 1132.150600, 0.0, 920.101817, 0.0, 1122.933787 , 540.055602, 0.0, 0.0, 1.0);
-  cv::Mat dist = (cv::Mat_<double>(5, 1) << 0.014426 ,-0.000547, 0.004371 ,0.007068 ,0.000000);
+  cv::Mat rvecs = (cv::Mat_<double>(3, 1) << 1.05609027, -1.20615636, 1.36252147);
+  cv::Mat tvecs = (cv::Mat_<double>(3, 1) << 0.04703533,  0.64852852, 0.18442012);
+  cv::Mat mtx = (cv::Mat_<double>(3, 3) << 575.416493, 0.0, 462.921798, 0.0, 570.435706, 272.781949, 0.0, 0.0, 1.0);
+  cv::Mat dist = (cv::Mat_<double>(5, 1) << 0.157403 ,-0.231388, -0.003486, 0.003449, 0.000000);
 
   // ROS
   ros::NodeHandle nh;
@@ -773,9 +796,12 @@ private:
   ros::WallTimer optimization_timer;
   ros::WallTimer map_publish_timer;
 
+  std::string default_pcd_save_path;
+  std::unique_ptr<message_filters::Subscriber<sensor_msgs::Image>> image_sub;
   std::unique_ptr<message_filters::Subscriber<nav_msgs::Odometry>> odom_sub;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub;
-  std::unique_ptr<message_filters::Synchronizer<ApproxSyncPolicy>> sync;
+  // std::unique_ptr<message_filters::Synchronizer<ApproxSyncPolicy>> sync;
+  std::unique_ptr<message_filters::Synchronizer<MySyncPolicy>> sync;
 
   ros::Subscriber floor_sub;
 
@@ -794,6 +820,7 @@ private:
   ros::Publisher map_points_pub;
   // ros::Publisher map_pub;
 
+  double default_save_map_resolution;
   tf::TransformListener tf_listener;
 
   ros::ServiceServer load_service_server;
