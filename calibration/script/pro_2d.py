@@ -31,6 +31,7 @@ def pro_on_img(image, points):
     for x, y in filtered_points:
         cv2.circle(image, (round(x), round(y)), 1, (0, 255, 0), -1)
     cv2.imshow('Marked Image', image)
+
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
