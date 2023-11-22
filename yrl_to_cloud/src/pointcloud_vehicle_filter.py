@@ -12,9 +12,9 @@ def callback(data):
     for point in pc2.read_points(data, field_names=("x", "y", "z"), skip_nans=True):
         x, y, z = point
         # 長方體過濾區域的邊界
-        x_min, x_max = -0.5, -0.05
-        y_min, y_max = -0.3, 0.3
-        z_min, z_max = -0.7, 0.7
+        x_min, x_max = -2.8, 0.05
+        y_min, y_max = -0.5, 0.5
+        z_min, z_max = -0.7, 3.0
         # 長方體過濾條件
         if not (x_min <= x <= x_max and y_min <= y <= y_max and z_min <= z <= z_max):
             filtered_points.append([x, y, z])

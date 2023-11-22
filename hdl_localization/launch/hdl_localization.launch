@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
 <launch>
   <!-- arguments -->
-  <arg name="bag_file" value="$(find calibration)/raw_data/bag/walk/bag_20231120_203624.bag" />
+  <arg name="bag_file" value="$(find calibration)/raw_data/bag/walk/bag_20231122_122810.bag" />
   <arg name="globalmap_pcd" value="$(find hdl_localization)/data/map_plane.pcd" />
   <param name="/use_sim_time" value="true"/>
   <arg name="nodelet_manager" default="velodyne_nodelet_manager" />
-  <arg name="points_topic" default="/assemble_yrl" />
+  <arg name="org_points_topic" default="/assemble_yrl" />
+  <arg name="filtered_points_topic" default="/vehicle_filtered_pointcloud" />
   <arg name="img_topic" default="/usb_cam/image_raw" />
   <arg name="raw_points_topic" default="/yrl_pub/yrl_cloud" />
   <!-- <arg name="odom_child_frame_id" default="yrl_cloud_id" /> -->
@@ -15,8 +16,10 @@
   <arg name="robot_odom_frame_id" value="odom" />
   <arg name="plot_estimation_errors" value="false" />
   
-  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock --topics  $(arg points_topic) $(arg img_topic) --bags $(arg bag_file)" />
-  
+  <node name="rosbag_play" pkg="rosbag" type="play" args="--clock --topics  $(arg org_points_topic) $(arg img_topic) --bags $(arg bag_file)" />
+
+  <node pkg="yrl_to_cloud" type="pointcloud_vehicle_filter.py" name="pointcloud_vehicle_filter">
+  </node>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_localization)/rviz/hdl_localization.rviz" required="true"/>
 
@@ -33,7 +36,7 @@
     </node>
 
     <node pkg="nodelet" type="nodelet" name="hdl_localization_nodelet" args="load hdl_localization/HdlLocalizationNodelet $(arg nodelet_manager)">
-      <remap from="/velodyne_points" to="$(arg points_topic)" />
+      <remap from="/velodyne_points" to="$(arg filtered_points_topic)" />
       <remap from="/segmented_image" to="/segmented_image"/>
       <param name="odom_child_frame_id" value="$(arg odom_child_frame_id)" />
       <param name="cool_time_duration" value="2.0" />
