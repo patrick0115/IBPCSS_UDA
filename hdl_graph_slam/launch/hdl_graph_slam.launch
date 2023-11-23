@@ -19,7 +19,7 @@
   <param name="/use_sim_time" value="true"/>
 
   <arg name="pcd_save_path" value="$(find hdl_localization)/data/" />
-  <arg name="bag_path" value="$(find calibration)/raw_data/bag/ee6/bag_20231122_122810.bag" />
+  <arg name="bag_path" value="$(find calibration)/raw_data/bag/ee6/bag_20231122_125708.bag" />
 
   <!-- <arg name="bag_path" value="$(find calibration)/raw_data/bag/icalab606/bag_20231116_191110.bag" /> -->
 

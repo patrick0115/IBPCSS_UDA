@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <launch>
   <!-- arguments -->
-  <arg name="bag_file" value="$(find calibration)/raw_data/bag/walk/bag_20231122_122810.bag" />
+  <arg name="bag_file" value="$(find calibration)/raw_data/bag/walk/bag_20231122_125247.bag" />
   <arg name="globalmap_pcd" value="$(find hdl_localization)/data/map_plane.pcd" />
+  <!-- <arg name="globalmap_pcd" value="$(find hdl_localization)/data/map.pcd" /> -->
   <param name="/use_sim_time" value="true"/>
   <arg name="nodelet_manager" default="velodyne_nodelet_manager" />
   <arg name="org_points_topic" default="/assemble_yrl" />
@@ -21,7 +22,7 @@
   <node pkg="yrl_to_cloud" type="pointcloud_vehicle_filter.py" name="pointcloud_vehicle_filter">
   </node>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_localization)/rviz/hdl_localization.rviz" required="true"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_localization)/rviz/hdl_localization.rviz" required="true"/>5j6
 
   <include file="$(find hdl_global_localization)/launch/hdl_global_localization.launch" if="$(arg use_global_localization)" />
   
