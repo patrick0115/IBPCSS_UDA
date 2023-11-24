@@ -156,11 +156,6 @@ private:
       point_rgb.x = point.x;
       point_rgb.y = point.y;
       point_rgb.z = point.z;
-
-      point_rgb.r = 254;
-      point_rgb.g = 254;
-      point_rgb.b = 254;
-
       cloud_rgb->points.push_back(point_rgb);
     }
     cloud_rgb->header = cloud->header;
@@ -216,11 +211,7 @@ private:
 
         int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
         int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));  
-        if (pt.z<0.03 ) {
-          pt.r = 80;  
-          pt.g = 50;
-          pt.b = 50;
-        }
+    
         if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows && pt.x>0 ) {
             cv::Vec3b color = image.at<cv::Vec3b>(v, u);   
             pt.r = color[2]; 
@@ -228,6 +219,14 @@ private:
             pt.b = color[0];
       
             cv::circle(projected_image, cv::Point(u, v), 3, cv::Scalar(255, 0, 0), -1);  // 使用點雲中的 RGB 顏色
+        }else if (pt.z<0.03 ) {
+          pt.r = 80;  
+          pt.g = 50;
+          pt.b = 50;
+        }else{
+          pt.r = 250;  
+          pt.g = 250;
+          pt.b = 250;
         }
       }
       return projected_image;
