@@ -219,14 +219,14 @@ private:
             pt.b = color[0];
       
             cv::circle(projected_image, cv::Point(u, v), 3, cv::Scalar(255, 0, 0), -1);  // 使用點雲中的 RGB 顏色
-        }else if (pt.z<0.03 ) {
+        }else if (pt.z<0.7 ) {
           pt.r = 80;  
           pt.g = 50;
           pt.b = 50;
         }else{
-          pt.r = 250;  
-          pt.g = 250;
-          pt.b = 250;
+          pt.r = 1;  
+          pt.g = 1;
+          pt.b = 1;
         }
       }
       return projected_image;
