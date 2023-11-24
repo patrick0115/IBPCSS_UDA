@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <launch>
   <!-- arguments -->
-  <arg name="bag_file" value="$(find calibration)/raw_data/bag/walk/bag_20231122_125247.bag" />
-  <arg name="globalmap_pcd" value="$(find hdl_localization)/data/map_plane.pcd" />
+  <arg name="bag_file" value="$(find calibration)/raw_data/bag/ee6/bag_20231122_125528.bag" />
+  <!-- <arg name="globalmap_pcd" value="$(find hdl_localization)/map/map_plane.pcd" /> -->
+  <arg name="globalmap_pcd" value="$(find hdl_localization)/map/colored_map/colored_map.pcd" />
   <!-- <arg name="globalmap_pcd" value="$(find hdl_localization)/data/map.pcd" /> -->
   <param name="/use_sim_time" value="true"/>
   <arg name="nodelet_manager" default="velodyne_nodelet_manager" />
@@ -10,19 +11,23 @@
   <arg name="filtered_points_topic" default="/vehicle_filtered_pointcloud" />
   <arg name="img_topic" default="/usb_cam/image_raw" />
   <arg name="raw_points_topic" default="/yrl_pub/yrl_cloud" />
+   
   <!-- <arg name="odom_child_frame_id" default="yrl_cloud_id" /> -->
   <arg name="odom_child_frame_id" default="base_link" />
   <arg name="use_global_localization" default="true" />
   <arg name="enable_robot_odometry_prediction" value="false" />
   <arg name="robot_odom_frame_id" value="odom" />
   <arg name="plot_estimation_errors" value="false" />
-  
+  <arg name="output_file" default="output.pcd"/>
+  <arg name="save_directory" default="$(find hdl_localization)/map/colored_map"/>
+
+
   <node name="rosbag_play" pkg="rosbag" type="play" args="--clock --topics  $(arg org_points_topic) $(arg img_topic) --bags $(arg bag_file)" />
 
   <node pkg="yrl_to_cloud" type="pointcloud_vehicle_filter.py" name="pointcloud_vehicle_filter">
   </node>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_localization)/rviz/hdl_localization.rviz" required="true"/>5j6
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_localization)/rviz/hdl_localization.rviz" required="true"/>
 
   <include file="$(find hdl_global_localization)/launch/hdl_global_localization.launch" if="$(arg use_global_localization)" />
   
@@ -58,6 +63,12 @@
       <param name="init_ori_z" value="0.0" />
       <param name="use_global_localization" value="$(arg use_global_localization)" />
     </node>
+    
+    <!-- <node pkg="hdl_localization" type="save_colored_cloud.py" name="point_cloud_saver" output="screen">
+        <param name="topic" value="$(arg colored_cloud)"/>
+        <param name="output_file" value="$(arg output_file)"/>
+        <param name="save_directory" value="$(arg save_directory)"/>
+    </node> -->
 
-    <node pkg="hdl_localization" type="plot_status.py" name="plot_estimation_errors" if="$(arg plot_estimation_errors)" />
+    <!-- <node pkg="hdl_localization" type="plot_status.py" name="plot_estimation_errors" if="$(arg plot_estimation_errors)" /> -->
 </launch>

@@ -18,7 +18,7 @@ namespace hdl_localization {
 
 class GlobalmapServerNodelet : public nodelet::Nodelet {
 public:
-  using PointT = pcl::PointXYZI;
+  using PointT = pcl::PointXYZRGB;
 
   GlobalmapServerNodelet() {
   }

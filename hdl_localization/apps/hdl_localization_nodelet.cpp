@@ -185,8 +185,8 @@ private:
 
         int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
         int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));  
-        
-        if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows) {
+        //  && pt.r ==254 && pt.r==254  &&pt.r==254
+        if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows && pt.x>0 ) {
             cv::Vec3b color = image.at<cv::Vec3b>(v, u); 
             pt.r = color[2];  // BGR -> RGB
             pt.g = color[1];
@@ -209,7 +209,7 @@ private:
       color_point.y = point.y;
       color_point.z = point.z;
     // 設定固定的RGB顏色，例如紅色 (255, 0, 0)
-      uint8_t r = 0, g = 0, b = 0;    // 紅色
+      uint8_t r = 0, g = 50, b = 100;    // 紅色
       uint32_t rgb = ((uint32_t)r << 16 | (uint32_t)g << 8 | (uint32_t)b);
       color_point.rgb = *reinterpret_cast<float*>(&rgb);
       cloud_rgb->points.push_back(color_point);
@@ -269,7 +269,7 @@ private:
   }
   void points_callback(const sensor_msgs::PointCloud2ConstPtr& points_msg) {
     if(!globalmap) {
-      NODELET_ERROR("globalmap has not been received!!");
+      // NODELET_ERROR("globalmap has not been received!!");
       return;
     }
      
@@ -277,7 +277,7 @@ private:
     pcl::PointCloud<PointT>::Ptr pcl_cloud(new pcl::PointCloud<PointT>());
     pcl::fromROSMsg(*points_msg, *pcl_cloud);
     if(pcl_cloud->empty()) {
-      NODELET_ERROR("cloud is empty!!");
+      // NODELET_ERROR("cloud is empty!!");
       return;
     }
     
@@ -306,7 +306,7 @@ private:
 
     std::lock_guard<std::mutex> estimator_lock(pose_estimator_mutex);
     if(!pose_estimator) {
-      NODELET_ERROR("waiting for initial pose input!!");
+      // NODELET_ERROR("waiting for initial pose input!!");
       return;
     }
     Eigen::Matrix4f before = pose_estimator->matrix();
@@ -367,18 +367,24 @@ private:
         NODELET_INFO("done");
       }
     }
-    pcss_map.reset(new pcl::PointCloud<pcl::PointXYZRGB>());
-    for(const auto& point : *globalmap) {
-      pcl::PointXYZRGB color_point;
-      color_point.x = point.x;
-      color_point.y = point.y;
-      color_point.z = point.z;
-      // 可以根據需要設置顏色
-      color_point.r = color_point.g = color_point.b = 255;
-      pcss_map->points.push_back(color_point);
-    }
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr colored_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::fromROSMsg(*points_msg, *colored_cloud);
+    // 从 ROS 消息转换到 PCL 点云，保留颜色信息
+    // pcl::fromROSMsg(*points_msg, *cloud);
+    // pcss_map.reset(new pcl::PointCloud<pcl::PointXYZRGB>());    
+    // for(const auto& point : *cloud) {
+    //   pcl::PointXYZRGB color_point;
+    //   color_point.x = point.x;
+    //   color_point.y = point.y;
+    //   color_point.z = point.z;
+    //   // 可以根據需要設置顏色
+    //   // color_point.r = color_point.g = color_point.b = 254;
+    //   pcss_map->points.push_back(color_point);
+    // }
+    pcss_map=colored_cloud;
     pcss_map->header.frame_id = "map";
   }
+
   bool relocalize(std_srvs::EmptyRequest& req, std_srvs::EmptyResponse& res) {
     if(last_scan == nullptr) {
       NODELET_INFO_STREAM("no scan has been received");

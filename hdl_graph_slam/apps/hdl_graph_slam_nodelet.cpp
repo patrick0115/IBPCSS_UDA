@@ -80,7 +80,7 @@ public:
     std::strftime(buffer, sizeof(buffer), "%Y%m%d-%H%M%S", std::localtime(&now));
     service_start_time = buffer;
 
-    published_odom_topic = private_nh.param<std::string>("published_odom_topic", "/odom");
+    published_odom_topic = private_nh.param<std::string>("published_odom_topic", "/odom" );
     map_frame_id = private_nh.param<std::string>("map_frame_id", "map");
     odom_frame_id = private_nh.param<std::string>("odom_frame_id", "odom");
     map_cloud_resolution = private_nh.param<double>("map_cloud_resolution", 0.05);
@@ -119,20 +119,21 @@ public:
     load_service_server = mt_nh.advertiseService("/hdl_graph_slam/load", &HdlGraphSlamNodelet::load_service, this);
     dump_service_server = mt_nh.advertiseService("/hdl_graph_slam/dump", &HdlGraphSlamNodelet::dump_service, this);
     save_map_service_server = mt_nh.advertiseService("/hdl_graph_slam/save_map", &HdlGraphSlamNodelet::save_map_service, this);
+    std::cout << "Enter [ rosservice call /hdl_graph_slam/save_map {} ] to save the map." << std::endl;      
 
     graph_updated = false;
     double graph_update_interval = private_nh.param<double>("graph_update_interval", 1.0);
     double map_cloud_update_interval = private_nh.param<double>("map_cloud_update_interval", 2.0);
     optimization_timer = mt_nh.createWallTimer(ros::WallDuration(graph_update_interval), &HdlGraphSlamNodelet::optimization_timer_callback, this);
     map_publish_timer = mt_nh.createWallTimer(ros::WallDuration(map_cloud_update_interval), &HdlGraphSlamNodelet::map_points_publish_timer_callback, this);
-    std::cout << "Enter [ rosservice call /hdl_graph_slam/save_map {} ] to save the map." << std::endl;      
 
-  
     projected_image_pub = nh.advertise<sensor_msgs::Image>("/projected_image", 1);
     colored_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/colored_cloud", 1);  // 初始化新的發布器  
   }
 
 private:
+
+
 
   void cloud_callback(const nav_msgs::OdometryConstPtr& odom_msg,const sensor_msgs::PointCloud2::ConstPtr& cloud_msg,const sensor_msgs::ImageConstPtr& image_msg){
     
@@ -156,9 +157,9 @@ private:
       point_rgb.y = point.y;
       point_rgb.z = point.z;
 
-      point_rgb.r = 255;
-      point_rgb.g = 255;
-      point_rgb.b = 255;
+      point_rgb.r = 254;
+      point_rgb.g = 254;
+      point_rgb.b = 254;
 
       cloud_rgb->points.push_back(point_rgb);
     }
@@ -173,6 +174,7 @@ private:
       sensor_msgs::ImagePtr projected_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", projected_image).toImageMsg();
       // projected_image_pub.publish(projected_msg);
       colored_cloud_pub.publish(cloud_rgb);
+
     } 
 
     if(!keyframe_updater->update(odom)) {
@@ -214,12 +216,17 @@ private:
 
         int u = static_cast<int>(point2D.at<double>(0) / point2D.at<double>(2));
         int v = static_cast<int>(point2D.at<double>(1) / point2D.at<double>(2));  
-        
-        if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows) {
-            cv::Vec3b color = image.at<cv::Vec3b>(v, u); 
-            pt.r = color[2];  // BGR -> RGB
+        if (pt.z<0.03 ) {
+          pt.r = 80;  
+          pt.g = 50;
+          pt.b = 50;
+        }
+        if (u >= 0 && u < projected_image.cols && v >= 0 && v < projected_image.rows && pt.x>0 ) {
+            cv::Vec3b color = image.at<cv::Vec3b>(v, u);   
+            pt.r = color[2]; 
             pt.g = color[1];
             pt.b = color[0];
+      
             cv::circle(projected_image, cv::Point(u, v), 3, cv::Scalar(255, 0, 0), -1);  // 使用點雲中的 RGB 顏色
         }
       }
@@ -766,19 +773,18 @@ private:
       return true;
     }
 
-
     cloud->header.frame_id = map_frame_id;
     cloud->header.stamp = snapshot.back()->cloud->header.stamp;
     std::string filename = service_start_time + ".pcd";
     std::string save_path = req.destination.empty() ? (default_pcd_save_path + filename) : req.destination;
     int ret = pcl::io::savePCDFileBinary(save_path, *cloud);
-    // int ret = pcl::io::savePCDFileBinary(req.destination, *cloud);
     res.success = ret == 0;
 
     return true;
   }
 
 private:
+
   bool projection;
   std::string service_start_time;
   ros::Publisher projected_image_pub;

@@ -52,9 +52,9 @@ class Plotter(object):
 			pyplot.subplot('212')
 			pyplot.plot(errs[:, 0], errs[:, 2], label=label)
 
-		pyplot.subplot('211')
+		pyplot.subplot('211', label='axis1')
 		pyplot.ylabel('trans error')
-		pyplot.subplot('212')
+		pyplot.subplot('212', label='axis2')
 		pyplot.ylabel('rot error')
 
 		pyplot.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol=len(errors))
