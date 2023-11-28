@@ -19,11 +19,10 @@
   <param name="/use_sim_time" value="true"/>
 
   <arg name="pcd_save_path" value="$(find hdl_localization)/data/" />
-  <arg name="bag_path" value="$(find calibration)/raw_data/bag/ee6/stop/bag_20231122_125910.bag" />
-
+  <arg name="bag_path" value="$(find calibration)/raw_data/bag/ee6/wc/bag_20231124_150205.bag" />
+  <arg name="save_directory" default="$(find hdl_localization)/map/colored_map/wc"/>
   <arg name="colored_cloud" default="colored_cloud"/>
-  <arg name="output_file" default="output.pcd"/>
-  <arg name="save_directory" default="$(find hdl_localization)/map/colored_map"/>
+
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hdl_graph_slam)/rviz/test.rviz" required="true"/>
   <node name="rosbag_play" pkg="rosbag" type="play" args="--clock $(arg bag_path)"  output="screen"/>
@@ -135,7 +134,6 @@
   </node>
   <node pkg="hdl_localization" type="save_colored_cloud.py" name="point_cloud_saver" output="screen">
       <param name="topic" value="$(arg colored_cloud)"/>
-      <param name="output_file" value="$(arg output_file)"/>
       <param name="save_directory" value="$(arg save_directory)"/>
   </node>
   <!-- <node pkg="hdl_graph_slam" type="map2odom_publisher.py" name="map2odom_publisher" >

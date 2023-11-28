@@ -11,7 +11,6 @@ class PointCloudSaver:
     def __init__(self):
         # 從 ROS 參數伺服器獲取設定參數
         self.topic = rospy.get_param('~topic', 'colored_cloud')
-        self.output_file = rospy.get_param('~output_file', 'colored_map.pcd')
         self.save_directory = rospy.get_param('~save_directory', '/tmp/')
 
         self.point_cloud_sub = rospy.Subscriber(self.topic, PointCloud2, self.callback)
