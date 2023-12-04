@@ -81,7 +81,7 @@ def remove_points_within_cylinder(pcd, center, radius, height):
 # 主程式
 def main():
     # 載入點雲檔案的路徑
-    file_path = "./pcd_map/20231121-121403.pcd"
+    file_path = "./pcss_map.pcd"
 
     # 統計離群值移除的參數
     nb_neighbors_statistical = 10  # 鄰居數量：用於確定每個點的鄰居範圍
@@ -113,10 +113,10 @@ def main():
 
 
     # 調用函數移除圓柱形區域內的點
-    pcd = remove_points_within_cylinder(pcd, center, radius, height)
+    # pcd = remove_points_within_cylinder(pcd, center, radius, height)
 
     # 統計離群值移除
-    # pcd = remove_statistical_outliers(pcd, nb_neighbors=nb_neighbors_statistical, std_ratio=std_ratio_statistical)
+    pcd = remove_statistical_outliers(pcd, nb_neighbors=nb_neighbors_statistical, std_ratio=std_ratio_statistical)
 
     # # 半徑離群值移除
     # pcd = remove_radius_outliers(pcd, nb_points=nb_points_radius, radius=radius)

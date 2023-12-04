@@ -2,6 +2,36 @@ import open3d as o3d
 import numpy as np
 from collections import Counter
 from sklearn.cluster import KMeans
+
+
+def make_points_black(pcd):
+    # 獲取點雲中點的數量
+    num_points = np.asarray(pcd.points).shape[0]
+
+    # 創建一個全黑色的顏色數組
+    black_colors = np.zeros((num_points, 3))
+
+    # 更新點雲的顏色
+    pcd.colors = o3d.utility.Vector3dVector(black_colors)
+
+    return pcd
+
+def display_point_cloud(pcd, point_size=1.0):
+    # 創建視覺化窗口
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+
+    # 添加點雲到視覺化窗口
+    vis.add_geometry(pcd)
+
+    # 獲取渲染選項並設定點的大小
+    render_option = vis.get_render_option()
+    render_option.point_size = point_size
+
+    # 顯示點雲
+    vis.run()
+    vis.destroy_window()
+
 def process_pcd(file_path):
     
     # 讀取PCD檔案
@@ -101,7 +131,7 @@ def adjust_color_to_dominant(pcd, radius=0.5, dominance_threshold=0.6):
     # 更新點雲顏色
     pcd.colors = o3d.utility.Vector3dVector(new_colors)
     pcd.colors = o3d.utility.Vector3dVector(new_colors)
-    o3d.visualization.draw_geometries([pcd])
+    # o3d.visualization.draw_geometries([pcd])
     return pcd
 # 呼叫函數並傳入您的PCD檔案路徑
 pcd=process_pcd("pcss_map.pcd")
@@ -110,6 +140,8 @@ pcd=process_pcd("pcss_map.pcd")
 
 pcd_filter=filter_isolated_points(pcd)
 pcd_majority_color = adjust_color_to_dominant(pcd_filter)
+pcd_black = make_points_black(pcd_majority_color)
+display_point_cloud(pcd_black, point_size=0.5)
 
 
 
