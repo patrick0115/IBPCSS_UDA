@@ -11,7 +11,7 @@
   <arg name="enable_seg_record" default="false" />
     <!-- <arg name="image_width" default="1920" />
   <arg name="image_height " default="1080" /> -->
-  <arg name="max_clouds" default="30" />
+  <arg name="max_clouds" default="200" />
   <arg name="tf" default="/tf" />
 
   <node pkg="yujin_yrl_v2_package" type="yrl_pub" name="yrl_pub" >
